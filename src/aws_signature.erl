@@ -49,7 +49,7 @@ hex(N) when N >= 10, N < 16 ->
 
 % On my Macbook Air from Mid 2013 I can sign about 150MB/sec of Payloads
 % It's basically 3000 signatures per second with Body being 50KB on a single
-% processor.
+% erlang process.
 sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
     DateOnly = lists:sublist(Date, 8),
     EndPoint = endpoint(Service, Region),

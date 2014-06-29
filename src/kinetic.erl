@@ -18,7 +18,9 @@ stop() ->
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
     {ok, pid()}.
-start(_, Opts) ->
+start(_, Opts) when is_list(Opts) ->
+    kinetic_sup:start_link(Opts);
+start(_, _) ->
     kinetic_sup:start_link().
 
 -spec stop(any()) -> ok.

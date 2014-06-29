@@ -2,8 +2,9 @@
  [
   {description, "Erlang Kinesis Client"},
   {vsn, "1"},
+  {modules, [kinetic, kinetic_sup, aws_signature]},
   {registered, []},
   {applications, [kernel, stdlib, inets, crypto, ssl, lhttpc]},
   {env, []},
-  {mod, {kinetic,[]}
+  {mod, {kinetic,[]}}
  ]}.

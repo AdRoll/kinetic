@@ -4,8 +4,10 @@ DEST:=$(PREFIX)$(PROJECT)
 
 REBAR=./rebar
 
+.PHONY: all doc clean test dialyzer
+
 all:
-	@$(REBAR) get-deps compile
+	@$(REBAR) compile
 
 edoc:
 	@$(REBAR) doc
@@ -18,9 +20,6 @@ test:
 clean:
 	@$(REBAR) clean
 
-build_plt:
-	@$(REBAR) build-plt
-
 dialyzer:
-	@$(REBAR) dialyze
+	@$(REBAR) analyze
 
