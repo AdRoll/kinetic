@@ -1,0 +1,4 @@
+kinetic
+=======
+
+Erlang Kinesis Client
