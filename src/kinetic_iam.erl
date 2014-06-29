@@ -5,12 +5,20 @@
 -include("kinetic.hrl").
 
 get_aws_keys(MetaData) ->
-    CurrentIAMRole = get_current_iam_role(MetaData),
-    get_aws_keys(MetaData, CurrentIAMRole).
+    case get_current_iam_role(MetaData) of
+        {ok, CurrentIAMRole} ->
+            get_aws_keys(MetaData, CurrentIAMRole);
+
+        {error, E} ->
+            {error, E};
+
+        Unknown ->
+            {error, Unknown}
+    end.
 
 
-get_aws_keys(_MetaData, undefined) ->
-    {error, no_profile_found};
+get_aws_keys(MetaData, undefined) ->
+    get_aws_keys(MetaData);
 get_aws_keys(MetaData, CurrentIAMRole) ->
     case kinetic_utils:fetch_and_return_url(MetaData ++ ?SECURITY_CREDENTIALS_PARTIAL_URL ++ CurrentIAMRole) of
         {ok, Body} ->
@@ -41,7 +49,8 @@ get_current_iam_role(MetaData) ->
 % ProfileArn looks like this:
 % <<"arn:aws:iam::ACCOUNT_NUMBER:instance-profile/ROLE">>
 get_role_from_body(<<"Success">>, ProfileArn) ->
-    binary:bin_to_list(lists:nth(2, binary:split(ProfileArn, <<"/">>)));
+    {ok, binary:bin_to_list(lists:nth(2, binary:split(ProfileArn, <<"/">>)))};
 get_role_from_body(_, _) ->
-    undefined.
+    {error, no_success}.
+
 

@@ -12,12 +12,12 @@
 
 -spec start() -> ok | {error, any()}.
 start() ->
-    application:start(lhttpc).
+    application:start(kinetic).
 
 
 -spec stop() -> ok | {error, any()}.
 stop() ->
-    application:stop(lhttpc).
+    application:stop(kinetic).
 
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
