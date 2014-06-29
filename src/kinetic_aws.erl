@@ -1,4 +1,4 @@
--module(aws_signature).
+-module(kinetic_aws).
 
 -export([sign_v4/7]).
 

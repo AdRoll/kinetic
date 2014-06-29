@@ -4,6 +4,8 @@
 -export([start_link/0, start_link/1]).
 -export([init/1]).
 
+-include("kinetic.hrl").
+
 -type child() :: {atom(), {atom(), atom(), list(any)},
     atom(), integer(), atom(), list(atom())}.
 
@@ -24,7 +26,8 @@ init(_Opts) ->
     ]}}.
 
 init_ets() ->
-    ets:new(kinetic, [named_table, set, public, {read_concurrency, true}]).
+    ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]).
+
 
 
 
