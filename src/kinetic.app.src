@@ -1,0 +1,8 @@
+{application, kinetic,
+ [
+  {description, "Erlang Kinesis Client"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [kernel, stdlib, inets, crypto, ssl, lhttpc, jiffy]},
+  {env, []}
+ ]}.
