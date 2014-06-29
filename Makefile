@@ -7,7 +7,7 @@ REBAR=./rebar
 .PHONY: all doc clean test dialyzer
 
 all:
-	@$(REBAR) compile
+	@$(REBAR) get-deps compile
 
 edoc:
 	@$(REBAR) doc
