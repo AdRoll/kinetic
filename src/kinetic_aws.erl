@@ -62,10 +62,9 @@ run2(N, V) ->
             V),
     run2(N-1, V).
 
-hex_from_bin(Md5_bin) ->
-    Md5_list = binary_to_list(Md5_bin),
-    list_to_hex(Md5_list).
-    % list_to_binary(lists:flatten(list_to_hex(Md5_list))).
+hex_from_bin(Bin) ->
+    List = binary_to_list(Bin),
+    list_to_hex(List).
 
 list_to_hex(L) ->
     lists:map(fun(X) -> int_to_hex(X) end, L).
