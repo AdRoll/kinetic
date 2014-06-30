@@ -16,8 +16,10 @@
 start_link(Opts) ->
     gen_server:start_link(
       {local, ?MODULE}, ?MODULE, [Opts], []).
+
 stop() ->
     gen_server:cast(?MODULE, stop).
+
 g(Name) ->
     case application:get_env(kinetic, Name) of
         {ok, Value} ->
@@ -25,6 +27,7 @@ g(Name) ->
         _ ->
             undefined
     end.
+
 get_args() ->
     try ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2) of
         V ->
@@ -33,6 +36,7 @@ get_args() ->
         {'EXIT', {badarg, _}} ->
             {error, missing_credentials}
     end.
+
 update_data(Opts) ->
     Arguments = case get_args() of
         {error, missing_credentials} ->

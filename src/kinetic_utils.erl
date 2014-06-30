@@ -48,5 +48,6 @@ fetch_and_return_body(Url) ->
 
 http_options() ->
     [{timeout, 200000}, {relaxed, true}].
+
 http_client_headers() ->
     [{"Connection", "close"}].

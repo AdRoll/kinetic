@@ -2,7 +2,7 @@
  [
   {description, "Erlang Kinesis Client"},
   {vsn, "1"},
-  {modules, [kinetic, kinetic_sup, kinetic_iam, kinetic_iso8601, kinetic_aws, kinetic_utils, kinetic_config]},
+  {modules, []},
   {registered, [kinetic_config]},
   {applications, [kernel, stdlib, inets, crypto, ssl, lhttpc]},
   {env, []},
