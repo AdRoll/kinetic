@@ -17,10 +17,6 @@ stop() ->
     gen_server:cast(?MODULE, stop).
 g(Name) ->
     case application:get_env(kinetic, Name) of
-        {ok, {local, PathElems}} ->
-            dyno_deps:local_path(PathElems);
-        {ok, {abs, Path}} ->
-            Path;
         {ok, Value} ->
             Value;
         _ ->
