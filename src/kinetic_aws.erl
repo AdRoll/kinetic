@@ -46,15 +46,9 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
 
 bench(N) ->
     crypto:start(),
-    % Start = erlang:now(),
-    % run(N),
-    % End = erlang:now(),
-    % io:format("~p~n", [timer:now_diff(End, Start)]).
     S = list_to_binary(string:chars($a, 50000)),
-    Start1 = erlang:now(),
-    run2(N, S),
-    End1 = erlang:now(),
-    io:format("~p~n", [timer:now_diff(End1, Start1)]).
+    {Time, _Value} = timer:tc(fun run2/2, [N, S]),
+    io:format("~p us~n", [Time]).
 
 %% Internal
 

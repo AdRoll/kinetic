@@ -33,7 +33,7 @@ get_args() ->
         V ->
             {ok, V}
     catch
-        {'EXIT', {badarg, _}} ->
+        error:badarg ->
             {error, missing_credentials}
     end.
 
