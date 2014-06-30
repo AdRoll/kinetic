@@ -15,7 +15,7 @@ You can start an erl with:
     Erlang R16B03-1 (erts-5.10.4) [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false] [dtrace]
 
     Eshell V5.10.4  (abort with ^G)
-    1> kinetic:list_streams({[]}).
+    1> kinetic:list_streams([]).
     {ok,{[{<<"HasMoreStreams">>,false},{<<"StreamNames">>,[]}]}}
 
 `development.config` allows the developer to override some configuration
