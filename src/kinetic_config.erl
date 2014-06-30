@@ -95,18 +95,23 @@ update_data_first(Opts) ->
             MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
             {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
             Region = region(Zone),
-            {ConfiguredAccessKeyId, ConfiguredSecretAccessKey, Region, isonow(), undefined, LHttpcOpts}
+            #kinetic_arguments{access_key_id=ConfiguredAccessKeyId,
+                               secret_access_key=ConfiguredSecretAccessKey,
+                               region=Region,
+                               date=isonow(),
+                               expiration_seconds=undefined,
+                               lhttpc_opts=LHttpcOpts}
     end.
 
-update_data_subsequent(_Opts, {AccessKeyId, SecretAccessKey, Region, _Date, undefined, LHttpcOpts}) ->
-    {AccessKeyId, SecretAccessKey, Region, isonow(), undefined, LHttpcOpts};
-update_data_subsequent(Opts, {AccessKeyId, SecretAccessKey, Region, _Date, CurrentExpirationSeconds, LHttpcOpts}) ->
+update_data_subsequent(_Opts, Args=#kinetic_arguments{expiration_seconds=undefined}) ->
+    Args#kinetic_arguments{date=isonow()};
+update_data_subsequent(Opts, Args=#kinetic_arguments{expiration_seconds=CurrentExpirationSeconds}) ->
     SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
     case SecondsToExpire < 120 of
         true ->
             refresh_from_iam(Opts);
         false ->
-            {AccessKeyId, SecretAccessKey, Region, isonow(), CurrentExpirationSeconds, LHttpcOpts}
+            Args#kinetic_arguments{date=isonow()}
     end.
 
 refresh_from_iam(Opts) ->
@@ -118,7 +123,12 @@ refresh_from_iam(Opts) ->
 
     {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
     ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
-    {AccessKeyId, SecretAccessKey, Region, isonow(), ExpirationSeconds, LHttpcOpts}.
+    #kinetic_arguments{access_key_id=AccessKeyId,
+                       secret_access_key=SecretAccessKey,
+                       region=Region,
+                       date=isonow(),
+                       expiration_seconds=ExpirationSeconds,
+                       lhttpc_opts=LHttpcOpts}.
 
 
 isonow() ->
