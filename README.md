@@ -16,7 +16,7 @@ You can start an erl with:
 
     Eshell V5.10.4  (abort with ^G)
     1> kinetic:list_streams([]).
-    {ok,{[{<<"HasMoreStreams">>,false},{<<"StreamNames">>,[]}]}}
+    {ok, [{<<"HasMoreStreams">>,false},{<<"StreamNames">>,[]}]}
 
 `development.config` allows the developer to override some configuration
 values to allow for different setups.
