@@ -4,11 +4,14 @@
 -export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 
--export([start_link/1, update_data/1, stop/0, g/1]).
+-export([start_link/1, update_data/1, stop/0, g/1, get_args/0]).
 
 -include("kinetic.hrl").
 
 -record(kinetic_config, {tref}).
+
+-define(EXPIRATION_REFRESH, 120).
+-define(METADATA_BASE_URL, "http://169.254.169.254").
 
 start_link(Opts) ->
     gen_server:start_link(
@@ -22,11 +25,19 @@ g(Name) ->
         _ ->
             undefined
     end.
-update_data(Opts) ->
-    Arguments = case catch(ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2)) of
+get_args() ->
+    try ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2) of
+        V ->
+            {ok, V}
+    catch
         {'EXIT', {badarg, _}} ->
-            update_data_first(Opts);
-        Result ->
+            {error, missing_credentials}
+    end.
+update_data(Opts) ->
+    Arguments = case get_args() of
+        {error, missing_credentials} ->
+            new_args(Opts);
+        {ok, Result} ->
             update_data_subsequent(Opts, Result)
     end,
     ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
@@ -35,6 +46,7 @@ update_data(Opts) ->
 % gen_server behavior
 
 init([Opts]) ->
+    process_flag(trap_exit, true),
     ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]),
     case update_data(Opts) of
         {ok, _ClientArgs} ->
@@ -52,9 +64,7 @@ handle_call(_Arg, _From, State) ->
     {reply, ok, State}.
 
 handle_cast(stop, State) ->
-    {stop, normal, State};
-handle_cast(_Arg, State) ->
-    {noreply, State}.
+    {stop, normal, State}.
 
 terminate(_Reason, _State=#kinetic_config{tref=TRef}) ->
     {ok, cancel} = timer:cancel(TRef),
@@ -77,54 +87,39 @@ region("ap-northeast-1" ++ _R) -> "ap-northeast-1";
 region("ap-southeast-1" ++ _R) -> "ap-southeast-1";
 region("eu-west-1" ++ _R) -> "eu-west-1".
 
-update_data_first(Opts) ->
-    ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
-    ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
-    LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
+get_aws_credentials(V, P, MetaData, Role)
+        when V =:= undefined orelse P =:= undefined ->
+    {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
+    ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
+    {ok, {AccessKeyId, SecretAccessKey, ExpirationSeconds}};
+get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) ->
+    {ok, {AccessKeyId, SecretAccessKey, no_expire}}.
 
-    case {ConfiguredAccessKeyId, ConfiguredSecretAccessKey} of
-        {V, P} when V =:= undefined orelse P =:= undefined ->
-            % setup from IAM service
-            refresh_from_iam(Opts);
-        _ ->
-            % These keys never expire
-            MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
-            {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
-            Region = region(Zone),
-            Host = kinetic_utils:endpoint("kinesis", Region),
-            Url = "https://" ++ Host,
-            #kinetic_arguments{access_key_id=ConfiguredAccessKeyId,
-                               secret_access_key=ConfiguredSecretAccessKey,
-                               region=Region,
-                               date=isonow(),
-                               host=Host,
-                               url=Url,
-                               expiration_seconds=undefined,
-                               lhttpc_opts=LHttpcOpts}
-    end.
-
-update_data_subsequent(_Opts, Args=#kinetic_arguments{expiration_seconds=undefined}) ->
+update_data_subsequent(_Opts, Args=#kinetic_arguments{expiration_seconds=no_expire}) ->
     Args#kinetic_arguments{date=isonow()};
 update_data_subsequent(Opts, Args=#kinetic_arguments{expiration_seconds=CurrentExpirationSeconds}) ->
     SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
-    case SecondsToExpire < 120 of
+    case SecondsToExpire < ?EXPIRATION_REFRESH of
         true ->
-            refresh_from_iam(Opts);
+            new_args(Opts);
         false ->
             Args#kinetic_arguments{date=isonow()}
     end.
 
-refresh_from_iam(Opts) ->
-    MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
+new_args(Opts) ->
+    ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
+    ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
+    MetaData = proplists:get_value(metadata_base_url, Opts, ?METADATA_BASE_URL),
     {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
     Region = region(Zone),
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
-    Role = proplists:get_value(iam_role, Opts),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
+    Role = proplists:get_value(iam_role, Opts),
 
-    {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
-    ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
+    {ok, {AccessKeyId, SecretAccessKey, ExpirationSeconds}} = 
+        get_aws_credentials(ConfiguredAccessKeyId, ConfiguredSecretAccessKey, MetaData, Role),
+
     #kinetic_arguments{access_key_id=AccessKeyId,
                        secret_access_key=SecretAccessKey,
                        region=Region,
@@ -133,7 +128,6 @@ refresh_from_iam(Opts) ->
                        url=Url,
                        expiration_seconds=ExpirationSeconds,
                        lhttpc_opts=LHttpcOpts}.
-
 
 isonow() ->
     kinetic_iso8601:format_basic(erlang:universaltime()).

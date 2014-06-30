@@ -23,3 +23,6 @@ clean:
 dialyzer:
 	@$(REBAR) analyze
 
+xref:
+	@$(REBAR) skip_deps=true xref
+

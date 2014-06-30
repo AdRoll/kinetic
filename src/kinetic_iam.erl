@@ -10,10 +10,7 @@ get_aws_keys(MetaData) ->
             get_aws_keys(MetaData, CurrentIAMRole);
 
         {error, E} ->
-            {error, E};
-
-        Unknown ->
-            {error, Unknown}
+            {error, E}
     end.
 
 

@@ -37,10 +37,8 @@ stop() ->
 start(Opts) when is_list(Opts) ->
     kinetic_sup:start_link(Opts).
 
-start(_, Opts) when is_list(Opts) ->
-    kinetic_sup:start_link(Opts);
-start(_, _) ->
-    kinetic_sup:start_link().
+start(_, Opts) ->
+    kinetic_sup:start_link(Opts).
 
 -spec stop(any()) -> ok.
 stop(_) ->
@@ -189,7 +187,7 @@ split_shard(Payload, Timeout) ->
 
 %% Internal
 execute(Operation, Payload, Timeout) ->
-    case get_args() of
+    case kinetic_config:get_args() of
         {error, E} ->
             throw(E);
 
@@ -208,26 +206,11 @@ execute(Operation, Payload, Timeout) ->
                        {"Authorization", AuthorizationHeader}],
             case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
                 {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
-                    {ok, unpack(ResponseBody)};
+                    {ok, kinetic_utils:unpack(ResponseBody)};
 
                 {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
                     {error, Code, ResponseHeaders, ResponseBody}
             end
     end.
 
-get_args() ->
-    case catch(ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2)) of
-        {'EXIT', {badarg, _}} ->
-            {error, missing_credentials};
-        V ->
-            {ok, V}
-    end.
-
-unpack(<<"">>) ->
-    [];
-unpack("") ->
-    [];
-unpack(Body) ->
-    {Decoded} = jiffy:decode(Body),
-    Decoded.
 
