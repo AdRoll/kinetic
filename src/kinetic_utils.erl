@@ -38,7 +38,8 @@ fetch_and_return_body(Url) ->
         {ok, {{_, Code, _}, _Headers, _Body}} ->
             {error, Code};
 
-        _ ->
+        E ->
+            error_logger:error_msg("~p~n", [E]),
             {error, unknown_result_from_http}
     end.
 

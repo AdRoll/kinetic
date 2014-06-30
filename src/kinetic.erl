@@ -5,6 +5,7 @@
 -export([start/0, stop/0]).
 -export([start/2, stop/1]).
 
+-export([start/1]).
 -export([list_streams/1]).
 
 
@@ -22,6 +23,9 @@ stop() ->
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
     {ok, pid()}.
+start(Opts) when is_list(Opts) ->
+    kinetic_sup:start_link(Opts).
+
 start(_, Opts) when is_list(Opts) ->
     kinetic_sup:start_link(Opts);
 start(_, _) ->
