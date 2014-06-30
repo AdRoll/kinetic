@@ -189,7 +189,7 @@ split_shard(Payload, Timeout) ->
 execute(Operation, Payload, Timeout) ->
     case kinetic_config:get_args() of
         {error, E} ->
-            throw(E);
+            {error, E};
 
         {ok, #kinetic_arguments{access_key_id=AccessKeyId, secret_access_key=SecretAccessKey,
                                     region=Region, date=Date, host=Host, url=Url,
