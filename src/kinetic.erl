@@ -49,7 +49,7 @@ stop(_) ->
 % Public API
 
 %%
-%% Payload = [{<<"ShardCount">>, binary()}, <- required
+%% Payload = [{<<"ShardCount">>, integer()}, <- required
 %%            {<<"StreamName">>, binary()}] <- required
 %% 
 %% Response = {ok, []}
@@ -69,7 +69,7 @@ delete_stream(Payload, Timeout) ->
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
-%%            {<<"Limit">>, binary()},      <- optional
+%%            {<<"Limit">>, integer()},      <- optional
 %%            {<<"ExclusiveStartShardId">>, binary()}] <- optional
 %%
 %% Response = {ok, [{<<"StreamDescription">>,
@@ -113,7 +113,7 @@ describe_stream(Payload, Timeout) ->
     execute("DescribeStream", Payload, Timeout).
 
 %%
-%% Payload = [{<<"Limit">>, binary()}, <- optional
+%% Payload = [{<<"Limit">>, integer()}, <- optional
 %%            {<<"ShardIterator">>, binary()}] <- required
 %% 
 %% Response = {ok, [
@@ -142,7 +142,7 @@ get_shard_iterator(Payload, Timeout) ->
 
 %%
 %% Payload = [{<<"ExclusiveStartStreamName">>, binary()}, <- optional
-%%            {<<"Limit">>, binary()}] <- optional
+%%            {<<"Limit">>, integer()}] <- optional
 %% 
 %% Response = {ok, [{<<"HasMoreStreams">>, false},
 %%                  {<<"StreamNames">>, [<<"exampleStreamName">>]}]}
@@ -163,7 +163,7 @@ merge_shards(Payload, Timeout) ->
     execute("MergeShards", Payload, Timeout).
 
 %%
-%% Payload = [{<<"Data">>, binary()}, <- required
+%% Payload = [{<<"Data">>, base64_binary()}, <- required
 %%            {<<"ExplicitHashKey">>, binary()},    <- optional
 %%            {<<"PartitionKey">>, binary()}, <- required
 %%            {<<"SequenceNumberForOrdering">>, binary()}, <- optional
