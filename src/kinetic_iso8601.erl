@@ -1,4 +1,5 @@
 % Copyright (c) 2012 Sean Sawyer
+% Copyright (c) 2014 Valentino Volonghi
 
 % Permission is hereby granted, free of charge, to any person obtaining a copy of
 % this software and associated documentation files (the "Software"), to deal in
@@ -20,6 +21,7 @@
 
 -export([add_time/4,
          format/1,
+         format_basic/1,
          parse/1]).
 
 -export_types([datetime/0,
@@ -48,6 +50,10 @@ format({{Y,Mo,D}, {H,Mn,S}}) ->
     FmtStr = "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0BZ",
     IsoStr = io_lib:format(FmtStr, [Y, Mo, D, H, Mn, S]),
     list_to_binary(IsoStr).
+format_basic({{Y,Mo,D}, {H,Mn,S}}) ->
+    FmtStr = "~4.10.0B~2.10.0B~2.10.0BT~2.10.0B~2.10.0B~2.10.0BZ",
+    IsoStr = io_lib:format(FmtStr, [Y, Mo, D, H, Mn, S]),
+    binary_to_list(list_to_binary(IsoStr)).
 
 -spec parse (string()) -> datetime().
 %% @doc Convert an ISO 8601 formatted string to a 

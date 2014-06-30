@@ -4,12 +4,14 @@
 
 -export([start/0, stop/0]).
 -export([start/2, stop/1]).
-
 -export([start/1]).
--export([list_streams/1]).
 
+
+-export([list_streams/1, list_streams/2]).
 
 -include("kinetic.hrl").
+
+% application behaviour
 
 -spec start() -> ok | {error, any()}.
 start() ->
@@ -35,6 +37,42 @@ start(_, _) ->
 stop(_) ->
     ok.
 
+% Public API
+
+% -spec api(method(), any(), integer()) ->result().
+list_streams(Payload) ->
+    execute("ListStreams", Payload, 5000).
+list_streams(Payload, Timeout) ->
+    execute("ListStreams", Payload, Timeout).
+
+
+%% Internal
+execute(Operation, Payload, Timeout) ->
+    case get_args() of
+        {error, E} ->
+            throw(E);
+
+        {ok, #kinetic_arguments{access_key_id=AccessKeyId, secret_access_key=SecretAccessKey,
+                                    region=Region, date=Date, host=Host, url=Url,
+                                    lhttpc_opts=LHttpcOpts}} ->
+            Target = ["Kinesis_20131202.", Operation],
+            Body = jiffy:encode({Payload}),
+            {ok, AuthorizationHeader} = kinetic_aws:sign_v4(AccessKeyId, SecretAccessKey, "kinesis",
+                                                      Region, Date, Target, Body),
+            Headers = [{"Content-Type", "application/x-amz-json-1.1"},
+                       {"Connection", "keep-alive"},
+                       {"x-amz-target", Target},
+                       {"x-amz-date", Date},
+                       {"Host", Host},
+                       {"Authorization", AuthorizationHeader}],
+            case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
+                {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                    {ok, jiffy:decode(ResponseBody)};
+
+                {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
+                    {error, Code, ResponseHeaders, ResponseBody}
+            end
+    end.
 
 get_args() ->
     case catch(ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2)) of
@@ -45,21 +83,3 @@ get_args() ->
     end.
 
 
-% -spec api(method(), any(), integer()) ->result().
-list_streams(_Limit) ->
-    case get_args() of
-        {error, Error} ->
-            {error, Error};
-
-        {ok, _V} ->%{ApiAccessKeyId, ApiSecretAccessKey, Region, Date, LHttpcOpts}} ->
-            pass
-    end.
-
-% api(Name, Body, Timeout) ->
-%     case catch(ets:lookup_element(?DINERL_DATA, ?ARGS_KEY, 2)) of
-%         {'EXIT', {badarg, _}} ->
-%             {error, missing_credentials, ""};
-%         {ApiAccessKeyId, ApiSecretAccessKey, Zone, ApiToken, Date, _} ->
-%             dinerl_client:api(ApiAccessKeyId, ApiSecretAccessKey, Zone,
-%                               ApiToken, Date, Name, Body, Timeout)
-%     end.

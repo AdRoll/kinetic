@@ -24,13 +24,6 @@
 %             V),
 %     run2(N-1, V).
 
-endpoint("kinesis", "us-east-1") -> "kinesis.us-east-1.amazonaws.com";
-endpoint("kinesis", "us-west-1") -> "kinesis.us-west-1.amazonaws.com";
-endpoint("kinesis", "us-west-2") -> "kinesis.us-west-2.amazonaws.com";
-endpoint("kinesis", "eu-west-1") -> "kinesis.eu-west-1.amazonaws.com";
-endpoint("kinesis", "ap-northeast-1") -> "kinesis.ap-northeast-1.amazonaws.com";
-endpoint("kinesis", "ap-southeast-1") -> "kinesis.ap-southeast-1.amazonaws.com".
-
 hex_from_bin(Md5_bin) ->
     Md5_list = binary_to_list(Md5_bin),
     list_to_hex(Md5_list).
@@ -52,7 +45,7 @@ hex(N) when N >= 10, N < 16 ->
 % erlang process.
 sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
     DateOnly = lists:sublist(Date, 8),
-    EndPoint = endpoint(Service, Region),
+    EndPoint = kinetic_utils:endpoint(Service, Region),
 
     % Changes once a day
     Key0 = crypto:hmac(sha256, "AWS4" ++ SecretAccessKey, DateOnly),
@@ -84,10 +77,9 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
     % Signing
     Signature = hex_from_bin(crypto:hmac(sha256, SigningKey, StringToSign)),
     {ok,
-     {"Authorization",
       ["AWS4-HMAC-SHA256 Credential=",
        AccessKeyId, $/, DateOnly, $/, Region, $/, Service, "/aws4_request",
        ",SignedHeaders=host;x-amz-date;x-amz-target,Signature=",
-       Signature]}}.
+       Signature]}.
 
 

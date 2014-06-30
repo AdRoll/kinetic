@@ -95,10 +95,14 @@ update_data_first(Opts) ->
             MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
             {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
             Region = region(Zone),
+            Host = kinetic_utils:endpoint("kinesis", Region),
+            Url = "https://" ++ Host,
             #kinetic_arguments{access_key_id=ConfiguredAccessKeyId,
                                secret_access_key=ConfiguredSecretAccessKey,
                                region=Region,
                                date=isonow(),
+                               host=Host,
+                               url=Url,
                                expiration_seconds=undefined,
                                lhttpc_opts=LHttpcOpts}
     end.
@@ -120,6 +124,8 @@ refresh_from_iam(Opts) ->
     Region = region(Zone),
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
     Role = proplists:get_value(iam_role, Opts),
+    Host = kinetic_utils:endpoint("kinesis", Region),
+    Url = "https://" ++ Host,
 
     {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
     ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
@@ -127,10 +133,12 @@ refresh_from_iam(Opts) ->
                        secret_access_key=SecretAccessKey,
                        region=Region,
                        date=isonow(),
+                       host=Host,
+                       url=Url,
                        expiration_seconds=ExpirationSeconds,
                        lhttpc_opts=LHttpcOpts}.
 
 
 isonow() ->
-    kinetic_iso8601:format(erlang:universaltime()).
+    kinetic_iso8601:format_basic(erlang:universaltime()).
 
