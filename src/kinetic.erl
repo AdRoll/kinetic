@@ -194,22 +194,27 @@ execute(Operation, Payload, Timeout) ->
         {ok, #kinetic_arguments{access_key_id=AccessKeyId, secret_access_key=SecretAccessKey,
                                     region=Region, date=Date, host=Host, url=Url,
                                     lhttpc_opts=LHttpcOpts}} ->
-            Target = ["Kinesis_20131202.", Operation],
-            Body = jiffy:encode({Payload}),
-            {ok, AuthorizationHeader} = kinetic_aws:sign_v4(AccessKeyId, SecretAccessKey, "kinesis",
-                                                      Region, Date, Target, Body),
-            Headers = [{"Content-Type", "application/x-amz-json-1.1"},
-                       {"Connection", "keep-alive"},
-                       {"x-amz-target", Target},
-                       {"x-amz-date", Date},
-                       {"Host", Host},
-                       {"Authorization", AuthorizationHeader}],
-            case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
-                {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
-                    {ok, kinetic_utils:unpack(ResponseBody)};
+            case kinetic_utils:encode({Payload}) of
+                {error, E} ->
+                    {error, E};
 
-                {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                    {error, Code, ResponseHeaders, ResponseBody}
+                Body ->
+                    Target = ["Kinesis_20131202.", Operation],
+                    {ok, AuthorizationHeader} = kinetic_aws:sign_v4(AccessKeyId, SecretAccessKey, "kinesis",
+                                                              Region, Date, Target, Body),
+                    Headers = [{"Content-Type", "application/x-amz-json-1.1"},
+                               {"Connection", "keep-alive"},
+                               {"x-amz-target", Target},
+                               {"x-amz-date", Date},
+                               {"Host", Host},
+                               {"Authorization", AuthorizationHeader}],
+                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
+                        {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                            {ok, kinetic_utils:decode(ResponseBody)};
+
+                        {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
+                            {error, Code, ResponseHeaders, ResponseBody}
+                    end
             end
     end.
 
