@@ -24,11 +24,11 @@ start_link(Args) ->
 
 -spec init(any()) -> {ok, {{atom(), integer(), integer()}, [child()]}}.
 init(Opts) ->
-    {ok, {{one_for_one, 10, 1}, [
-        {kinetic_config,
+    KineticConfig = {kinetic_config,
          {kinetic_config, start_link, [Opts]},
-         permanent, 10000, worker, [kinetic_config]}
-    ]}}.
+                     permanent, 10000, worker, [kinetic_config]},
+
+    {ok, {{one_for_one, 10, 1}, [KineticConfig]}}.
 
 -spec stop(pid()) -> ok.
 stop(Pid) ->

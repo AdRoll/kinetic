@@ -27,37 +27,14 @@ g(Name) ->
             undefined
     end.
 update_data(Opts) ->
-    MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
-    Role = proplists:get_value(iam_role, Opts),
-    {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
-    UTCNow = erlang:universaltime(),
-    NowSeconds = calendar:datetime_to_gregorian_seconds(UTCNow),
-
-    {CurrentAccessKeyId, CurrentSecretAccessKey, Region, _Date, CurrentExpirationSeconds, LHttpcOpts} =
-      case catch(ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2)) of
+    Arguments = case catch(ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2)) of
         {'EXIT', {badarg, _}} ->
-            % dummy replacements
-            {"123", "123", region(Zone), undefined, NowSeconds, proplists:get_value(lhttpc_opts, Opts, [])};
-
+            update_data_first(Opts);
         Result ->
-            Result
+            update_data_subsequent(Opts, Result)
     end,
-
-    NewDate = kinetic_iso8601:format(UTCNow),
-    SecondsToExpire = CurrentExpirationSeconds - NowSeconds,
-
-    NewArgs = case SecondsToExpire < 120 of
-        true ->
-            {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
-            ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
-            {AccessKeyId, SecretAccessKey, Region, NewDate, ExpirationSeconds, LHttpcOpts};
-
-        false ->
-            {CurrentAccessKeyId, CurrentSecretAccessKey, Region, NewDate, CurrentExpirationSeconds, LHttpcOpts}
-    end,
-    ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, NewArgs}),
-    {ok, NewArgs}.
-
+    ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
+    {ok, Arguments}.
 
 % gen_server behavior
 
@@ -103,4 +80,47 @@ region("us-west-2" ++ _R) -> "us-west-2";
 region("ap-northeast-1" ++ _R) -> "ap-northeast-1";
 region("ap-southeast-1" ++ _R) -> "ap-southeast-1";
 region("eu-west-1" ++ _R) -> "eu-west-1".
+
+update_data_first(Opts) ->
+    ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
+    ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
+    LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
+
+    case {ConfiguredAccessKeyId, ConfiguredSecretAccessKey} of
+        {V, P} when V =:= undefined orelse P =:= undefined ->
+            % setup from IAM service
+            refresh_from_iam(Opts);
+        _ ->
+            % These keys never expire
+            MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
+            {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
+            Region = region(Zone),
+            {ConfiguredAccessKeyId, ConfiguredSecretAccessKey, Region, isonow(), undefined, LHttpcOpts}
+    end.
+
+update_data_subsequent(_Opts, {AccessKeyId, SecretAccessKey, Region, _Date, undefined, LHttpcOpts}) ->
+    {AccessKeyId, SecretAccessKey, Region, isonow(), undefined, LHttpcOpts};
+update_data_subsequent(Opts, {AccessKeyId, SecretAccessKey, Region, _Date, CurrentExpirationSeconds, LHttpcOpts}) ->
+    SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
+    case SecondsToExpire < 120 of
+        true ->
+            refresh_from_iam(Opts);
+        false ->
+            {AccessKeyId, SecretAccessKey, Region, isonow(), CurrentExpirationSeconds, LHttpcOpts}
+    end.
+
+refresh_from_iam(Opts) ->
+    MetaData = proplists:get_value(metadata_base_url, Opts, "http://169.254.169.254"),
+    {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
+    Region = region(Zone),
+    LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
+    Role = proplists:get_value(iam_role, Opts),
+
+    {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
+    ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
+    {AccessKeyId, SecretAccessKey, Region, isonow(), ExpirationSeconds, LHttpcOpts}.
+
+
+isonow() ->
+    kinetic_iso8601:format(erlang:universaltime()).
 
