@@ -10,7 +10,6 @@
 
 -record(kinetic_config, {tref}).
 
--define(EXPIRATION_REFRESH, 120).
 -define(METADATA_BASE_URL, "http://169.254.169.254").
 
 start_link(Opts) ->
@@ -18,7 +17,7 @@ start_link(Opts) ->
       {local, ?MODULE}, ?MODULE, [Opts], []).
 
 stop() ->
-    gen_server:cast(?MODULE, stop).
+    gen_server:call(?MODULE, stop).
 
 g(Name) ->
     case application:get_env(kinetic, Name) of
@@ -64,11 +63,11 @@ init([Opts]) ->
             {error, Error}
     end.
 
-handle_call(_Arg, _From, State) ->
-    {reply, ok, State}.
+handle_call(stop, _From, State) ->
+    {stop, normal, ok, State}.
 
-handle_cast(stop, State) ->
-    {stop, normal, State}.
+handle_cast(_Arg, State) ->
+    {noreply, State}.
 
 terminate(_Reason, _State=#kinetic_config{tref=TRef}) ->
     {ok, cancel} = timer:cancel(TRef),
