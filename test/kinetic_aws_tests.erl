@@ -47,7 +47,7 @@ test_signature_valid() ->
      kinetic_aws:sign_v4("BLABLABLA", "BLABLABLA", "kinesis", "us-west-1",
                            "20140629T022822Z", "Kinesis_20131202.ListStreams",
                            "something"),
-
+    kinetic_aws:bench(1),
     ok.
 
 
