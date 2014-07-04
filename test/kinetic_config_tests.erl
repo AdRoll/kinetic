@@ -27,13 +27,31 @@ test_teardown(_) ->
     meck:unload(kinetic_iam),
     meck:unload(kinetic_utils).
 
-kinetic_utils_test_() ->
+test_setup_ets() ->
+    test_setup(),
+    ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]).
+
+test_teardown_ets(_V) ->
+    test_teardown(_V),
+    ets:delete(?KINETIC_DATA).
+
+kinetic_config_test_() ->
     {inorder,
-        {setup,
+        {foreach,
             fun test_setup/0,
             fun test_teardown/1,
             [
-                ?_test(test_passed_metadata()),
+                ?_test(test_passed_metadata())
+            ]
+        }
+    }.
+
+kinetic_config_ets_test_() ->
+    {inorder,
+        {foreach,
+            fun test_setup_ets/0,
+            fun test_teardown_ets/1,
+            [
                 ?_test(test_update_data())
             ]
         }
@@ -41,8 +59,16 @@ kinetic_utils_test_() ->
 
 test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},
-                                           {aws_secret_access_key, "secret"},
-                                           {metadata_base_url, "doesn't matter"}]),
+                                            {aws_secret_access_key, "secret"},
+                                            {metadata_base_url, "doesn't matter"}]),
+    {ok, #kinetic_arguments{access_key_id="whatever",
+                            secret_access_key="secret",
+                            region="us-east-1",
+                            expiration_seconds=no_expire,
+                            lhttpc_opts=[]}} = kinetic_config:get_args(),
+    kinetic_config:update_data([{aws_access_key_id, "whatever"},
+                                {aws_secret_access_key, "secret"},
+                                {metadata_base_url, "doesn't matter"}]),
     {ok, #kinetic_arguments{access_key_id="whatever",
                             secret_access_key="secret",
                             region="us-east-1",
@@ -52,11 +78,21 @@ test_passed_metadata() ->
     {error, _} = kinetic_config:get_args().
 
 test_update_data() ->
-    ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]),
+    {ok, #kinetic_arguments{access_key_id="WHATVER",
+                            secret_access_key="SECRET",
+                            region="us-east-1",
+                            expiration_seconds=_Expire,
+                            date=_Date}} = kinetic_config:update_data([{metadata_base_url, "close_expire"}]),
     {ok, #kinetic_arguments{access_key_id="WHATVER",
                             secret_access_key="SECRET",
                             region="us-east-1",
                             expiration_seconds=64323799933,
-                            date=_Date}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]),
-    ets:delete(?KINETIC_DATA).
+                            date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]),
+    {ok, #kinetic_arguments{access_key_id="WHATVER",
+                            secret_access_key="SECRET",
+                            region="us-east-1",
+                            expiration_seconds=64323799933,
+                            date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]).
+
+
 
