@@ -28,8 +28,11 @@ decode(<<"">>) ->
     [];
 decode(Body) ->
     try jiffy:decode(Body) of
-        {Decoded} ->
-            Decoded
+        {Decoded} -> % enforces the dictionary
+            Decoded;
+
+        _ ->
+            {error, not_a_dict}
     catch
         {error, E} ->
             {error, E}
