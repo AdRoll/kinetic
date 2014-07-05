@@ -99,17 +99,3 @@ test_error_functions() ->
     ).
 
 
-                                            
-
-
-
-% kinetic_errors_test_() ->
-%     {inorder,
-%         {foreach,
-%             fun test_setup/0,
-%             fun test_teardown/1,
-%             [
-%             ]
-%         }
-%     }.
-
