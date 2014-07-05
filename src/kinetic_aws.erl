@@ -45,7 +45,6 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
        Signature]}.
 
 bench(N) ->
-    crypto:start(),
     S = list_to_binary(string:chars($a, 50000)),
     {Time, _Value} = timer:tc(fun run2/2, [N, S]),
     io:format("~p us~n", [Time]).

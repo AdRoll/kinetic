@@ -4,20 +4,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-% start_app() ->
-%     application:start(crypto),
-%     application:start(public_key),
-%     ok = application:start(ssl),
-%     ok = lhttpc:start(),
-%     ok = kinetic:start().
-
-% stop_app(_) ->
-%     ok = kinetic:stop(),
-%     ok = lhttpc:stop(),
-%     ok = application:stop(ssl).
-
-
-
 signature_test_() ->
     [
         ?_test(test_signature_valid())
