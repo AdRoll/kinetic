@@ -21,9 +21,20 @@ test_setup() ->
     ),
     meck:new(kinetic_utils, [passthrough]),
     meck:expect(kinetic_utils, fetch_and_return_url,
-                fun(_MetaData, text) -> {ok, "us-east-1b"} end).
+                fun(_MetaData, text) -> {ok, "us-east-1b"} end),
+    meck:new(timer, [unstick, passthrough]),
+    meck:expect(timer, apply_interval, fun
+            (Interval, M, F, [Opts]) ->
+                case proplists:get_value(should_err, Opts) of
+                    true ->
+                        {error, broken};
+                    _ ->
+                        meck:passthrough([Interval, M, F, [Opts]])
+                end
+        end).
 
 test_teardown(_) ->
+    meck:unload(timer),
     meck:unload(kinetic_iam),
     meck:unload(kinetic_utils).
 
@@ -41,7 +52,9 @@ kinetic_config_test_() ->
             fun test_setup/0,
             fun test_teardown/1,
             [
-                ?_test(test_passed_metadata())
+                ?_test(test_passed_metadata()),
+                ?_test(test_config_env()),
+                ?_test(test_error_init())
             ]
         }
     }.
@@ -56,6 +69,17 @@ kinetic_config_ets_test_() ->
             ]
         }
     }.
+
+test_config_env() ->
+    application:set_env(kinetic, whatever, value),
+    value = kinetic_config:g(whatever),
+    undefined = kinetic_config:g(something).
+
+test_error_init() ->
+    process_flag(trap_exit, true),
+    {error, {error, broken}} = kinetic_config:start_link([{metadata_base_url, "no_expire"}, {should_err, true}]),
+    process_flag(trap_exit, false).
+    
 
 test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},

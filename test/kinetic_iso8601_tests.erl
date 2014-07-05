@@ -5,7 +5,7 @@
 
 
 
-kinetic_utils_test_() ->
+kinetic_iso8601_test_() ->
     [
         ?_test(test_iso8601_formatters())
     ].
