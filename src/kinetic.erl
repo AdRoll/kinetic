@@ -192,8 +192,8 @@ execute(Operation, Payload, Timeout) ->
             {error, E};
 
         {ok, #kinetic_arguments{access_key_id=AccessKeyId, secret_access_key=SecretAccessKey,
-                                    region=Region, date=Date, host=Host, url=Url,
-                                    lhttpc_opts=LHttpcOpts}} ->
+                                region=Region, date=Date, host=Host, url=Url,
+                                lhttpc_opts=LHttpcOpts}} ->
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
                     {error, E};
