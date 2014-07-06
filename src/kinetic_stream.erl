@@ -91,5 +91,11 @@ get_stream(Config={StreamName, _BasePartitionName, _PartitionsNumber, _Timeout})
     end.
 
 internal_flush(State) ->
-    State.
+    increment_partition(State).
+
+increment_partition(State=#kinetic_stream{current_partition_num=Number,
+                                         partitions_number=Number}) ->
+    State#kinetic_stream{current_partition_num=0};
+increment_partition(State=#kinetic_stream{current_partition_num=Number}) ->
+    State#kinetic_stream{current_partition_num=Number+1}.
 
