@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0]).
--export([init/1, stop/1]).
+-export([init/1]).
 
 -include("kinetic.hrl").
 
@@ -21,14 +21,4 @@ init(_) ->
                      transient, 10000, worker, [kinetic_stream]},
 
     {ok, {{simple_one_for_one, 10, 1}, [KineticStream]}}.
-
--spec stop(pid()) -> ok.
-stop(Pid) ->
-    MRef = erlang:monitor(process, Pid),
-    exit(Pid, shutdown),
-    receive
-        {'DOWN', MRef, process, _, _} ->
-            ok
-    end.
-
 
