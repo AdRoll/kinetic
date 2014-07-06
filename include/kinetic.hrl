@@ -31,4 +31,4 @@
         flush_tref :: undefined | term()
 }).
 
--endif .
+-endif.

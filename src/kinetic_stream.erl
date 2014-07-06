@@ -46,7 +46,7 @@ handle_call({put_record, Data}, _From, State=#kinetic_stream{buffer=Buffer, buff
             {reply, {error, max_size_exceeded}, State};
 
         false ->
-            case BSize + Data > ?KINESIS_MAX_PUT_SIZE of
+            case BSize + DataSize > ?KINESIS_MAX_PUT_SIZE of
                 true ->
                     NewState = internal_flush(State),
                     {reply, ok, NewState#kinetic_stream{buffer_size=DataSize,
@@ -76,8 +76,7 @@ handle_info(_Info, State) ->
 get_stream(Config={StreamName, _BasePartitionName, _PartitionsNumber, _Timeout}) ->
     case ets:lookup(?MODULE, StreamName) of
         [] ->
-            case supervisor:start_child(kinetic_stream_sup,
-                                        [Config]) of
+            case supervisor:start_child(kinetic_stream_sup, [Config]) of
                 {ok, undefined} -> get_stream(Config);
                 {ok, Pid} -> Pid
             end;
@@ -90,12 +89,20 @@ get_stream(Config={StreamName, _BasePartitionName, _PartitionsNumber, _Timeout})
             end
     end.
 
-internal_flush(State) ->
-    increment_partition(State).
+internal_flush(State=#kinetic_stream{stream_name=StreamName, buffer=Buffer}) ->
+    PartitionKey = partition_key(State),
+    kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
+                        {<<"PartitionKey">>, PartitionKey},
+                        {<<"StreamName">>, StreamName}]),
+    increment_partition_num(State#kinetic_stream{buffer= <<"">>, buffer_size=0}).
 
-increment_partition(State=#kinetic_stream{current_partition_num=Number,
-                                         partitions_number=Number}) ->
+increment_partition_num(State=#kinetic_stream{current_partition_num=Number,
+                                              partitions_number=Number}) ->
     State#kinetic_stream{current_partition_num=0};
-increment_partition(State=#kinetic_stream{current_partition_num=Number}) ->
+increment_partition_num(State=#kinetic_stream{current_partition_num=Number}) ->
     State#kinetic_stream{current_partition_num=Number+1}.
+
+partition_key(#kinetic_stream{current_partition_num=Number, base_partition_name=BasePartitionName}) ->
+    BinNumber = integer_to_binary(Number),
+    <<BasePartitionName/binary, "-", BinNumber/binary>>.
 
