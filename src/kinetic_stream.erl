@@ -16,10 +16,19 @@ stop() ->
 
 
 put_record(Config, Data) ->
-    Stream = get_stream(Config),
+    StreamName = case Config of
+        {Name, _} -> Name;
+        {Name, _, _} -> Name;
+        {Name, _, _, _} -> Name
+    end,
+    Stream = get_stream(StreamName, Config),
     gen_server:call(Stream, {put_record, Data}, infinity).
 
 % gen_server behavior
+init({StreamName, BasePartitionName}) ->
+    init({StreamName, BasePartitionName, 1000});
+init({StreamName, BasePartitionName, PartitionsNumber}) ->
+    init({StreamName, BasePartitionName, PartitionsNumber, 5000});
 init({StreamName, BasePartitionName, PartitionsNumber, Timeout}) ->
     process_flag(trap_exit, true),
     case ets:insert_new(?MODULE, StreamName, self()) of
@@ -73,11 +82,11 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 % Internal implementation
-get_stream(Config={StreamName, _BasePartitionName, _PartitionsNumber, _Timeout}) ->
+get_stream(StreamName, Config) ->
     case ets:lookup(?MODULE, StreamName) of
         [] ->
             case supervisor:start_child(kinetic_stream_sup, [Config]) of
-                {ok, undefined} -> get_stream(Config);
+                {ok, undefined} -> get_stream(StreamName, Config);
                 {ok, Pid} -> Pid
             end;
         [{_Name, Pid}] ->
@@ -85,15 +94,15 @@ get_stream(Config={StreamName, _BasePartitionName, _PartitionsNumber, _Timeout})
                 true -> Pid;
                 false ->
                     ets:delete(?MODULE, StreamName),
-                    get_stream(Config)
+                    get_stream(StreamName, Config)
             end
     end.
 
-internal_flush(State=#kinetic_stream{stream_name=StreamName, buffer=Buffer}) ->
+internal_flush(State=#kinetic_stream{stream_name=StreamName, buffer=Buffer, timeout=Timeout}) ->
     PartitionKey = partition_key(State),
     kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
                         {<<"PartitionKey">>, PartitionKey},
-                        {<<"StreamName">>, StreamName}]),
+                        {<<"StreamName">>, StreamName}], Timeout),
     increment_partition_num(State#kinetic_stream{buffer= <<"">>, buffer_size=0}).
 
 increment_partition_num(State=#kinetic_stream{current_partition_num=Number,
