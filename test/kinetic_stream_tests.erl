@@ -9,17 +9,22 @@ test_setup() ->
     meck:sequence(supervisor, start_child, 2, [{ok, undefined}, {ok, pid}]),
     meck:new(kinetic, [passthrough]),
     meck:expect(kinetic, put_record,
-        fun(Payload, _Timeout) ->
-                case proplists:get_value(<<"error">>, Payload) of
-                    undefined ->
-                        self() ! done,
-                        {ok, done};
+        fun(Payload, Pid) ->
+                case Pid of
+                    Pid when is_pid(Pid) ->
+                        Pid ! done;
+                    _ ->
+                        ok
+                end,
+                case proplists:get_value(<<"PartitionKey">>, Payload) of
+                    <<"otherstuff">> ->
+                        {error, 400, headers, <<"{\"__type\": \"OtherStuff\"}">>};
 
                     <<"throughput">> ->
                         {error, 400, headers, <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>};
 
                     _ ->
-                        {error, 400, headers, <<"{\"__type\": \"OtherStuff\"}">>}
+                        {ok, done}
                 end
         end),
     meck:new(timer, [unstick, passthrough]),
@@ -50,7 +55,8 @@ kinetic_config_test_() ->
             [
                 ?_test(test_get_stream()),
                 ?_test(test_start_and_stop()),
-                ?_test(test_functionality())
+                ?_test(test_functionality()),
+                ?_test(test_retries())
             ]
         }
     }.
@@ -92,19 +98,65 @@ test_start_and_stop() ->
     ok.
 
 test_functionality() ->
+    Pid = self(),
     BigData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE+1)),
     SmallData = <<"data">>,
-    _RegularData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE-1)),
+    RegularData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE-1)),
     S = <<"mystream">>,
     P = <<"whatever">>,
-    {ok, _Pid} = kinetic_stream:start_link(S, {P}),
+    % This is a total hack to use the Pid as the Timeout and have it passed around
+    {ok, _Pid} = kinetic_stream:start_link(S, {P, 2, 3, Pid}),
     {error, max_size_exceeded} = kinetic_stream:put_record(S, {P}, BigData),
     ok = kinetic_stream:put_record(S, {P}, SmallData),
     kinetic_stream:flush(S, {P}),
     Payload0 = [{<<"Data">>, base64:encode(SmallData)},
                 {<<"PartitionKey">>, <<P/binary, "-0">>},
                 {<<"StreamName">>, S}],
-    receive
+    wait_for_flush(),
+    true = meck:called(kinetic, put_record, [Payload0, Pid]),
+    Payload1 = [{<<"Data">>, base64:encode(<<SmallData/binary, SmallData/binary>>)},
+                {<<"PartitionKey">>, <<P/binary, "-1">>},
+                {<<"StreamName">>, S}],
+    ok = kinetic_stream:put_record(S, {P}, SmallData),
+    ok = kinetic_stream:put_record(S, {P}, SmallData),
+    kinetic_stream:flush(S, {P}),
+    wait_for_flush(),
+    true = meck:called(kinetic, put_record, [Payload1, Pid]),
+    ok = kinetic_stream:put_record(S, {P}, RegularData),
+    ok = kinetic_stream:put_record(S, {P}, SmallData),
+    Payload2 = [{<<"Data">>, base64:encode(RegularData)},
+                {<<"PartitionKey">>, <<P/binary, "-2">>},
+                {<<"StreamName">>, S}],
+    true = meck:called(kinetic, put_record, [Payload2, Pid]),
+    kinetic_stream:flush(S, {P}),
+    wait_for_flush(),
+    Payload3 = [{<<"Data">>, base64:encode(SmallData)},
+                {<<"PartitionKey">>, <<P/binary, "-0">>},
+                {<<"StreamName">>, S}],
+    true = meck:called(kinetic, put_record, [Payload3, Pid]),
+    ok.
+
+test_retries() ->
+    SmallData = <<"data">>,
+    S = <<"mystream">>,
+    P = <<"otherstuff">>,
+    Payload0 = [{<<"Data">>, base64:encode(SmallData)},
+                {<<"PartitionKey">>, P},
+                {<<"StreamName">>, S}],
+    {error, _, _, _} = kinetic_stream:send_to_kinesis(S, SmallData, P, 5000, 3),
+    1 = meck:num_calls(kinetic, put_record, [Payload0, 5000]),
+    ok = try kinetic_stream:send_to_kinesis(S, SmallData, <<"throughput">>, 5000, 3) of
+        _ ->
+            bad
+    catch
+        error:max_retries_reached ->
+            ok
+    end,
+    true = meck:called(timer, sleep, [1000]),
+    ok.
+
+wait_for_flush() ->
+    ok = receive
         done ->
             ok;
         _ ->
@@ -112,7 +164,5 @@ test_functionality() ->
     after
         1000 ->
             bad
-    end,
-    true = meck:called(kinetic, put_record, [Payload0, 5000]),
-    ok.
+    end.
 

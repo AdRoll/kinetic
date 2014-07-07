@@ -10,7 +10,7 @@
 
 % I dislike this soooo much
 -ifdef(TEST).
--export([get_stream/2]).
+-export([get_stream/2, send_to_kinesis/5]).
 -endif.
 
 -include("kinetic.hrl").
@@ -162,7 +162,8 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
                     send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries-1);
 
                 _ ->
-                    error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody])
+                    error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody]),
+                    {error, Code, Headers, Body}
             end
     end.
 
