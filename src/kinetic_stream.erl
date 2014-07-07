@@ -4,42 +4,47 @@
 -export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 
--export([stop/0, start_link/1, put_record/2]).
+-export([stop/0, start_link/2, put_record/3]).
+-export([flush/2]).
 
 -include("kinetic.hrl").
 
-start_link(Config) ->
-    gen_server:start_link(?MODULE, Config, []).
+start_link(StreamName, Config) ->
+    gen_server:start_link(?MODULE, [StreamName, Config], []).
 
 stop() ->
     gen_server:call(?MODULE, stop).
 
 
-put_record(Config, Data) ->
-    StreamName = case Config of
-        {Name, _} -> Name;
-        {Name, _, _} -> Name;
-        {Name, _, _, _} -> Name
-    end,
+put_record(StreamName, Config, Data) ->
     Stream = get_stream(StreamName, Config),
     gen_server:call(Stream, {put_record, Data}, infinity).
 
+flush(StreamName, Config) ->
+    Stream = get_stream(StreamName, Config),
+    Stream ! flush.
+
 % gen_server behavior
-init({StreamName, BasePartitionName}) ->
-    init({StreamName, BasePartitionName, 1000});
-init({StreamName, BasePartitionName, PartitionsNumber}) ->
-    init({StreamName, BasePartitionName, PartitionsNumber, 5000});
-init({StreamName, BasePartitionName, PartitionsNumber, Timeout}) ->
+init([StreamName, {BasePartitionName}]) ->
+    init([StreamName, {BasePartitionName, 1000}]);
+init([StreamName, {BasePartitionName, PartitionsNumber}]) ->
+    init([StreamName, {BasePartitionName, PartitionsNumber, 5000}]);
+init([StreamName, {BasePartitionName, PartitionsNumber, Timeout}]) ->
+    init([StreamName, {BasePartitionName, PartitionsNumber, Timeout, 1000}]);
+init([StreamName, {BasePartitionName, PartitionsNumber, Timeout, FlushInterval}]) ->
     process_flag(trap_exit, true),
     case ets:insert_new(?MODULE, StreamName, self()) of
         true ->
+            {ok, TRef} = timer:send_after(FlushInterval, flush),
             {ok, #kinetic_stream{stream_name=StreamName,
                                  base_partition_name=BasePartitionName,
                                  partitions_number=PartitionsNumber,
                                  timeout=Timeout,
                                  buffer= <<"">>,
                                  buffer_size=0,
-                                 current_partition_num=0}};
+                                 current_partition_num=0,
+                                 flush_interval=FlushInterval,
+                                 flush_tref=TRef}};
         false ->
             ignore
     end.
@@ -58,11 +63,13 @@ handle_call({put_record, Data}, _From, State=#kinetic_stream{buffer=Buffer, buff
             case BSize + DataSize > ?KINESIS_MAX_PUT_SIZE of
                 true ->
                     NewState = internal_flush(State),
-                    {reply, ok, NewState#kinetic_stream{buffer_size=DataSize,
-                                                        buffer=Data}};
+                    {reply, ok, reset_timer(NewState#kinetic_stream{
+                                      buffer_size=DataSize,
+                                      buffer=Data})};
                 false ->
-                    {reply, ok, State#kinetic_stream{buffer= <<Buffer/binary, Data/binary>>,
-                                                     buffer_size=BSize+DataSize}}
+                    {reply, ok, reset_timer(State#kinetic_stream{
+                                      buffer= <<Buffer/binary, Data/binary>>,
+                                      buffer_size=BSize+DataSize})}
             end
     end;
 handle_call(stop, _From, State) ->
@@ -78,6 +85,12 @@ terminate(_Reason, #kinetic_stream{stream_name=StreamName}) ->
 code_change(_OldVsn, State, _Extra) ->
     State.
 
+handle_info(flush, State) ->
+    NewState = internal_flush(State),
+    {noreply, reset_timer(NewState)};
+handle_info({'EXIT', From, Reason}, State) ->
+    error_logger:info_msg("~p exited due to: ~p~n", [From, Reason]),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -100,9 +113,11 @@ get_stream(StreamName, Config) ->
 
 internal_flush(State=#kinetic_stream{stream_name=StreamName, buffer=Buffer, timeout=Timeout}) ->
     PartitionKey = partition_key(State),
-    kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
-                        {<<"PartitionKey">>, PartitionKey},
-                        {<<"StreamName">>, StreamName}], Timeout),
+    spawn_link(fun() ->
+        kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
+                            {<<"PartitionKey">>, PartitionKey},
+                            {<<"StreamName">>, StreamName}], Timeout)
+        end),
     increment_partition_num(State#kinetic_stream{buffer= <<"">>, buffer_size=0}).
 
 increment_partition_num(State=#kinetic_stream{current_partition_num=Number,
@@ -114,4 +129,9 @@ increment_partition_num(State=#kinetic_stream{current_partition_num=Number}) ->
 partition_key(#kinetic_stream{current_partition_num=Number, base_partition_name=BasePartitionName}) ->
     BinNumber = integer_to_binary(Number),
     <<BasePartitionName/binary, "-", BinNumber/binary>>.
+
+reset_timer(State=#kinetic_stream{flush_interval=FlushInterval, flush_tref=TRef}) ->
+    timer:cancel(TRef),
+    {ok, NewTRef} = timer:send_after(FlushInterval, self(), flush),
+    State#kinetic_stream{flush_tref=NewTRef}.
 
