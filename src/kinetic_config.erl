@@ -51,7 +51,7 @@ update_data(Opts) ->
 init([Opts]) ->
     process_flag(trap_exit, true),
     ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]),
-    ets:new(kinetic_stream, [named_table, set, public, {read_concurrency, true}]),
+    ets:new(?KINETIC_STREAM, [named_table, set, public, {read_concurrency, true}]),
     {ok, _ClientArgs} = update_data(Opts),
     case timer:apply_interval(1000, ?MODULE, update_data, [Opts]) of
         {ok, TRef} -> 
@@ -69,12 +69,17 @@ handle_cast(_Arg, State) ->
 terminate(_Reason, _State=#kinetic_config{tref=TRef}) ->
     {ok, cancel} = timer:cancel(TRef),
     true = ets:delete(?KINETIC_DATA),
-    true = ets:delete(kinetic_stream),
+    true = ets:delete(?KINETIC_STREAM),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     State.
 
+handle_info({'EXIT', _From, normal}, State) ->
+    {noreply, State};
+handle_info({'EXIT', From, Reason}, State) ->
+    error_logger:info_msg("kinetic_config: ~p exited due to: ~p~n", [From, Reason]),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 

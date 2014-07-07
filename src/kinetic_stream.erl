@@ -28,12 +28,14 @@ flush(StreamName, Config) ->
 init([StreamName, {BasePartitionName}]) ->
     init([StreamName, {BasePartitionName, 1000}]);
 init([StreamName, {BasePartitionName, PartitionsNumber}]) ->
-    init([StreamName, {BasePartitionName, PartitionsNumber, 5000}]);
-init([StreamName, {BasePartitionName, PartitionsNumber, Timeout}]) ->
-    init([StreamName, {BasePartitionName, PartitionsNumber, Timeout, 1000}]);
-init([StreamName, {BasePartitionName, PartitionsNumber, Timeout, FlushInterval}]) ->
+    init([StreamName, {BasePartitionName, PartitionsNumber, 3}]);
+init([StreamName, {BasePartitionName, PartitionsNumber, Retries}]) ->
+    init([StreamName, {BasePartitionName, PartitionsNumber, Retries, 5000}]);
+init([StreamName, {BasePartitionName, PartitionsNumber, Retries, Timeout}]) ->
+    init([StreamName, {BasePartitionName, PartitionsNumber, Retries, Timeout, 1000}]);
+init([StreamName, {BasePartitionName, PartitionsNumber, Retries, Timeout, FlushInterval}]) ->
     process_flag(trap_exit, true),
-    case ets:insert_new(?MODULE, StreamName, self()) of
+    case ets:insert_new(?KINETIC_STREAM, {StreamName, self()}) of
         true ->
             {ok, TRef} = timer:send_after(FlushInterval, flush),
             {ok, #kinetic_stream{stream_name=StreamName,
@@ -44,7 +46,8 @@ init([StreamName, {BasePartitionName, PartitionsNumber, Timeout, FlushInterval}]
                                  buffer_size=0,
                                  current_partition_num=0,
                                  flush_interval=FlushInterval,
-                                 flush_tref=TRef}};
+                                 flush_tref=TRef,
+                                 retries=Retries}};
         false ->
             ignore
     end.
@@ -88,17 +91,19 @@ code_change(_OldVsn, State, _Extra) ->
 handle_info(flush, State) ->
     NewState = internal_flush(State),
     {noreply, reset_timer(NewState)};
+handle_info({'EXIT', _From, normal}, State) ->
+    {noreply, State};
 handle_info({'EXIT', From, Reason}, State) ->
-    error_logger:info_msg("~p exited due to: ~p~n", [From, Reason]),
+    error_logger:info_msg("kinetic_stream: ~p exited due to: ~p~n", [From, Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
 % Internal implementation
 get_stream(StreamName, Config) ->
-    case ets:lookup(?MODULE, StreamName) of
+    case ets:lookup(?KINETIC_STREAM, StreamName) of
         [] ->
-            case supervisor:start_child(kinetic_stream_sup, [Config]) of
+            case supervisor:start_child(kinetic_stream_sup, [StreamName, Config]) of
                 {ok, undefined} -> get_stream(StreamName, Config);
                 {ok, Pid} -> Pid
             end;
@@ -111,13 +116,14 @@ get_stream(StreamName, Config) ->
             end
     end.
 
-internal_flush(State=#kinetic_stream{stream_name=StreamName, buffer=Buffer, timeout=Timeout}) ->
+internal_flush(State=#kinetic_stream{buffer= <<"">>}) ->
+    State;
+internal_flush(State=#kinetic_stream{stream_name=StreamName,
+                                     buffer=Buffer,
+                                     timeout=Timeout,
+                                     retries=Retries}) ->
     PartitionKey = partition_key(State),
-    spawn_link(fun() ->
-        kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
-                            {<<"PartitionKey">>, PartitionKey},
-                            {<<"StreamName">>, StreamName}], Timeout)
-        end),
+    spawn_link(fun() -> send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries+1) end),
     increment_partition_num(State#kinetic_stream{buffer= <<"">>, buffer_size=0}).
 
 increment_partition_num(State=#kinetic_stream{current_partition_num=Number,
@@ -134,4 +140,26 @@ reset_timer(State=#kinetic_stream{flush_interval=FlushInterval, flush_tref=TRef}
     timer:cancel(TRef),
     {ok, NewTRef} = timer:send_after(FlushInterval, self(), flush),
     State#kinetic_stream{flush_tref=NewTRef}.
+
+send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, 0) ->
+    erlang:error(max_retries_reached, [StreamName, PartitionKey, Timeout, Buffer]);
+send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
+    case kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
+                             {<<"PartitionKey">>, PartitionKey},
+                             {<<"StreamName">>, StreamName}], Timeout) of
+        {ok, _} ->
+            {ok, done};
+
+        {error, 400, Headers, RawBody} ->
+            Body = kinetic_utils:decode(RawBody),
+            case proplists:get_value(<<"__type">>, Body) of
+                <<"ProvisionedThroughputExceededException">> ->
+                    timer:sleep(1000), % not really exponential
+                    send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries-1);
+
+                _ ->
+                    error_logger:info_msg("Request failed:~n~p~n~p~n", [Headers, RawBody])
+            end
+    end.
+
 
