@@ -4,21 +4,34 @@
 -export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 
--export([stop/0, start_link/2, put_record/3]).
+-export([stop/2, start_link/2, put_record/3]).
 -export([flush/2]).
+
+
+% I dislike this soooo much
+-ifdef(TEST).
+-export([get_stream/2]).
+-endif.
 
 -include("kinetic.hrl").
 
 start_link(StreamName, Config) ->
     gen_server:start_link(?MODULE, [StreamName, Config], []).
 
-stop() ->
-    gen_server:call(?MODULE, stop).
+stop(StreamName, Config) ->
+    Stream = get_stream(StreamName, Config),
+    gen_server:call(Stream, stop).
 
 
 put_record(StreamName, Config, Data) ->
-    Stream = get_stream(StreamName, Config),
-    gen_server:call(Stream, {put_record, Data}, infinity).
+    DataSize = erlang:size(Data),
+    case DataSize > ?KINESIS_MAX_PUT_SIZE of
+        true ->
+            {error, max_size_exceeded};
+        false ->
+            Stream = get_stream(StreamName, Config),
+            gen_server:call(Stream, {put_record, Data, DataSize}, infinity)
+    end.
 
 flush(StreamName, Config) ->
     Stream = get_stream(StreamName, Config),
@@ -37,7 +50,7 @@ init([StreamName, {BasePartitionName, PartitionsNumber, Retries, Timeout, FlushI
     process_flag(trap_exit, true),
     case ets:insert_new(?KINETIC_STREAM, {StreamName, self()}) of
         true ->
-            {ok, TRef} = timer:send_after(FlushInterval, flush),
+            {ok, TRef} = timer:send_after(FlushInterval, self(), flush),
             {ok, #kinetic_stream{stream_name=StreamName,
                                  base_partition_name=BasePartitionName,
                                  partitions_number=PartitionsNumber,
@@ -53,36 +66,27 @@ init([StreamName, {BasePartitionName, PartitionsNumber, Retries, Timeout, FlushI
     end.
 
 
-handle_call({put_record, Data}, _From, State=#kinetic_stream{buffer=Buffer, buffer_size=BSize}) ->
-    % Data is bigger than ?KINESIS_MAX_PUT_SIZE
-    % buffer + Data is bigger than (or equal to) ?KINESIS_MAX_PUT_SIZE
-    % buffer + Data is not bigger than ?KINESIS_MAX_PUT_SIZE
-    DataSize = erlang:size(Data),
-    case DataSize > ?KINESIS_MAX_PUT_SIZE of
-        true ->
-            {reply, {error, max_size_exceeded}, State};
-
-        false ->
-            case BSize + DataSize > ?KINESIS_MAX_PUT_SIZE of
-                true ->
-                    NewState = internal_flush(State),
-                    {reply, ok, reset_timer(NewState#kinetic_stream{
-                                      buffer_size=DataSize,
-                                      buffer=Data})};
-                false ->
-                    {reply, ok, reset_timer(State#kinetic_stream{
-                                      buffer= <<Buffer/binary, Data/binary>>,
-                                      buffer_size=BSize+DataSize})}
-            end
-    end;
+% buffer + Data is bigger than (or equal to) ?KINESIS_MAX_PUT_SIZE
+% buffer + Data is not bigger than ?KINESIS_MAX_PUT_SIZE
+handle_call({put_record, Data, DataSize}, _From,
+            State=#kinetic_stream{buffer_size=BSize})
+        when BSize + DataSize > ?KINESIS_MAX_PUT_SIZE ->
+    NewState = internal_flush(State),
+    {reply, ok, reset_timer(NewState#kinetic_stream{buffer_size=DataSize, buffer=Data})};
+handle_call({put_record, Data, DataSize}, _From,
+            State=#kinetic_stream{buffer=Buffer, buffer_size=BSize}) ->
+    {reply, ok, reset_timer(State#kinetic_stream{
+                buffer= <<Buffer/binary, Data/binary>>,
+                buffer_size=BSize+DataSize})};
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State}.
 
 handle_cast(_Arg, State) ->
     {noreply, State}.
 
-terminate(_Reason, #kinetic_stream{stream_name=StreamName}) ->
+terminate(_Reason, #kinetic_stream{stream_name=StreamName, flush_tref=Tref}) ->
     ets:delete(?MODULE, StreamName),
+    timer:cancel(Tref),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -111,7 +115,7 @@ get_stream(StreamName, Config) ->
             case is_process_alive(Pid) of
                 true -> Pid;
                 false ->
-                    ets:delete(?MODULE, StreamName),
+                    ets:delete(?KINETIC_STREAM , StreamName),
                     get_stream(StreamName, Config)
             end
     end.
@@ -150,7 +154,7 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
         {ok, _} ->
             {ok, done};
 
-        {error, 400, Headers, RawBody} ->
+        {error, Code, Headers, RawBody} ->
             Body = kinetic_utils:decode(RawBody),
             case proplists:get_value(<<"__type">>, Body) of
                 <<"ProvisionedThroughputExceededException">> ->
@@ -158,7 +162,7 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
                     send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries-1);
 
                 _ ->
-                    error_logger:info_msg("Request failed:~n~p~n~p~n", [Headers, RawBody])
+                    error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody])
             end
     end.
 
