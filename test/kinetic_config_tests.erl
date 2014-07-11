@@ -79,12 +79,12 @@ test_error_init() ->
     process_flag(trap_exit, true),
     {error, {error, broken}} = kinetic_config:start_link([{metadata_base_url, "no_expire"}, {should_err, true}]),
     process_flag(trap_exit, false).
-    
 
 test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},
                                             {aws_secret_access_key, "secret"},
                                             {metadata_base_url, "doesn't matter"}]),
+    ?assert(ets:info(?KINETIC_STREAM) =/= undefined),
     {ok, #kinetic_arguments{access_key_id="whatever",
                             secret_access_key="secret",
                             region="us-east-1",
@@ -99,7 +99,8 @@ test_passed_metadata() ->
                             expiration_seconds=no_expire,
                             lhttpc_opts=[]}} = kinetic_config:get_args(),
     kinetic_config:stop(),
-    {error, _} = kinetic_config:get_args().
+    {error, _} = kinetic_config:get_args(),
+    undefined = ets:info(?KINETIC_STREAM).
 
 test_update_data() ->
     {ok, #kinetic_arguments{access_key_id="WHATVER",
