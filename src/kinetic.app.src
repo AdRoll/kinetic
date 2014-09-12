@@ -4,7 +4,7 @@
   {vsn, "1"},
   {modules, []},
   {registered, [kinetic_config]},
-  {applications, [kernel, stdlib, inets, crypto, ssl, lhttpc]},
+  {applications, [kernel, stdlib, inets, crypto, ssl]},
   {env, []},
   {mod, {kinetic,[]}}
  ]}.
