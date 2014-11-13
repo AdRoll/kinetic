@@ -201,7 +201,7 @@ execute(Operation, Payload, Timeout) ->
                     Target = ["Kinesis_20131202.", Operation],
 
                     {ok, AuthorizationHeaders} =
-                        kinetic_aws:authorization_headers(AwsCreds, "kinesis", Region,
+                        kinetic_aws:authorization_headers_v4(AwsCreds, "kinesis", Region,
                                                           Date, Target, Body),
 
                     Headers = [{"Content-Type", "application/x-amz-json-1.1"},

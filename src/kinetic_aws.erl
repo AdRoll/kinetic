@@ -1,10 +1,10 @@
 -module(kinetic_aws).
 
--export([authorization_headers/6, sign_v4/7]).
+-export([authorization_headers_v4/6, sign_v4/7]).
 
 -include("kinetic.hrl").
 
-authorization_headers(AwsCreds, Service, Region, Date, Target, Body) ->
+authorization_headers_v4(AwsCreds, Service, Region, Date, Target, Body) ->
 
     #aws_credentials{secret_access_key = SecretAccessKey, access_key_id = AccessKeyId,
         security_token = SecurityToken} = AwsCreds,
@@ -29,13 +29,16 @@ authorization_headers(AwsCreds, Service, Region, Date, Target, Body) ->
         end
     ],
 
-    SignedHeaders = [[Key, ";"] ||  {Key, _Value} <- Headers],
+    NormalizedHeaders = [{string:to_lower(Name), Value} || {Name, Value} <-
+        lists:keysort(1, Headers)],
+
+    SignedHeaders = string:join([Name || {Name, _} <- NormalizedHeaders], ";"),
 
     % Canonical Request
     CanonicalRequest = ["POST", $\n,
         "/", $\n,
         $\n,
-        [[Key, ":", Value, $\n] || {Key, Value} <- Headers], $\n,
+        [[string:to_lower(Key), $:, Value, $\n] || {Key, Value} <- NormalizedHeaders], $\n,
         SignedHeaders, $\n,
         hex_from_bin(crypto:hash(sha256, Body))],
 
