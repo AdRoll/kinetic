@@ -21,8 +21,12 @@ authorization_headers(AwsCreds, Service, Region, Date, Target, Body) ->
     Headers = [
         {"Host", EndPoint},
         {"x-amz-date", Date},
-        {"x-amz-security-token", SecurityToken},
         {"x-amz-target", Target}
+        |
+        case SecurityToken of
+            undefined -> [];
+            _ -> [{"x-amz-security-token", SecurityToken}]
+        end
     ],
 
     SignedHeaders = [[Key, ";"] ||  {Key, _Value} <- Headers],
