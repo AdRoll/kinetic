@@ -191,8 +191,7 @@ execute(Operation, Payload, Timeout) ->
         {error, E} ->
             {error, E};
 
-        {ok, #kinetic_arguments{access_key_id=AccessKeyId, secret_access_key=SecretAccessKey,
-                                region=Region, date=Date, host=Host, url=Url,
+        {ok, #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url,
                                 lhttpc_opts=LHttpcOpts}} ->
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
@@ -200,14 +199,15 @@ execute(Operation, Payload, Timeout) ->
 
                 Body ->
                     Target = ["Kinesis_20131202.", Operation],
-                    {ok, AuthorizationHeader} = kinetic_aws:sign_v4(AccessKeyId, SecretAccessKey, "kinesis",
-                                                              Region, Date, Target, Body),
+
+                    {ok, AuthorizationHeaders} =
+                        kinetic_aws:authorization_headers(AwsCreds, "kinesis", Region,
+                                                          Date, Target, Body),
+
                     Headers = [{"Content-Type", "application/x-amz-json-1.1"},
-                               {"Connection", "keep-alive"},
-                               {"x-amz-target", Target},
-                               {"x-amz-date", Date},
-                               {"Host", Host},
-                               {"Authorization", AuthorizationHeader}],
+                               {"Connection", "keep-alive"}
+                               | AuthorizationHeaders],
+
                     case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
                         {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
