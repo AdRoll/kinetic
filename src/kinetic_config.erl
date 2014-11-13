@@ -97,8 +97,8 @@ get_aws_credentials(V, P, MetaData, Role)
         when V =:= undefined orelse P =:= undefined ->
     {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
     ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
-    {ok, {AccessKeyId, SecretAccessKey, ExpirationSeconds}};
-get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) ->
+    {ok, {binary_to_list(AccessKeyId), binary_to_list(SecretAccessKey), ExpirationSeconds}};
+get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) when is_list(AccessKeyId), is_list(SecretAccessKey) ->
     {ok, {AccessKeyId, SecretAccessKey, no_expire}}.
 
 update_data_subsequent(_Opts, Args=#kinetic_arguments{expiration_seconds=no_expire}) ->
