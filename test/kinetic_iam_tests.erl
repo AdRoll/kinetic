@@ -13,6 +13,7 @@ test_setup() ->
                        {ok, [{<<"Code">>,<<"Broken">>},
                              {<<"AccessKeyId">>,<<"SOMERANDOMVALUE">>},
                              {<<"SecretAccessKey">>, <<"SomeSecretAccessKey">>},
+                             {<<"Token">>, <<"SomeToken">>},
                              {<<"Expiration">>,<<"2014-06-30T02:23:41Z">>}]};
                    _ ->
                        {ok, [{<<"Code">>,<<"Broken">>},
@@ -36,6 +37,7 @@ test_setup() ->
                        {ok, [{<<"Code">>,<<"Success">>},
                              {<<"AccessKeyId">>,<<"SOMERANDOMVALUE">>},
                              {<<"SecretAccessKey">>, <<"SomeSecretAccessKey">>},
+                             {<<"Token">>, <<"SomeToken">>},
                              {<<"Expiration">>,<<"2014-06-30T02:23:41Z">>}]};
                    _ ->
                        {ok, [{<<"Code">>,<<"Success">>},
@@ -62,9 +64,10 @@ iam_fetching_test_() ->
     }.
 
 test_fetching_keys_with_role() ->
-    {ok,{<<"SOMERANDOMVALUE">>,
-     <<"SomeSecretAccessKey">>,
-     <<"2014-06-30T02:23:41Z">>}} =
+    {ok, #aws_credentials{access_key_id = "SOMERANDOMVALUE",
+     secret_access_key = "SomeSecretAccessKey",
+     security_token = "SomeToken",
+     expiration_seconds = 63571314221}} =
             kinetic_iam:get_aws_keys("http://some_url", "something"),
     {error, no_credentials_found} = kinetic_iam:get_aws_keys("code_error", "something"),
     {error, _} = kinetic_iam:get_aws_keys("code_error", "something"),
@@ -72,13 +75,15 @@ test_fetching_keys_with_role() ->
     ok.
 
 test_fetching_keys() ->
-    {ok,{<<"SOMERANDOMVALUE">>,
-     <<"SomeSecretAccessKey">>,
-     <<"2014-06-30T02:23:41Z">>}} =
+    {ok,#aws_credentials{access_key_id = "SOMERANDOMVALUE",
+        secret_access_key = "SomeSecretAccessKey",
+        security_token = "SomeToken",
+        expiration_seconds = 63571314221}} =
             kinetic_iam:get_aws_keys("http://some_url"),
-    {ok,{<<"SOMERANDOMVALUE">>,
-     <<"SomeSecretAccessKey">>,
-     <<"2014-06-30T02:23:41Z">>}} =
+    {ok,#aws_credentials{access_key_id = "SOMERANDOMVALUE",
+        secret_access_key = "SomeSecretAccessKey",
+        security_token = "SomeToken",
+        expiration_seconds = 63571314221}} =
             kinetic_iam:get_aws_keys("http://some_url", undefined),
     {error, role_stuff} = kinetic_iam:get_aws_keys("error"),
     {error, no_success} = kinetic_iam:get_aws_keys("code_error"),

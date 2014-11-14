@@ -21,10 +21,15 @@ get_aws_keys(MetaData, CurrentIAMRole) ->
         {ok, Body} ->
             case proplists:get_value(<<"Code">>, Body) of
                 <<"Success">> ->
-                    {ok, {proplists:get_value(<<"AccessKeyId">>, Body),
-                          proplists:get_value(<<"SecretAccessKey">>, Body),
-                          proplists:get_value(<<"Expiration">>, Body)}};
-
+                    {ok, #aws_credentials{
+                        access_key_id =
+                            binary_to_list(proplists:get_value(<<"AccessKeyId">>, Body)),
+                        secret_access_key =
+                            binary_to_list(proplists:get_value(<<"SecretAccessKey">>, Body)),
+                        security_token =
+                            binary_to_list(proplists:get_value(<<"Token">>, Body)),
+                        expiration_seconds = calendar:datetime_to_gregorian_seconds(
+                            kinetic_iso8601:parse(proplists:get_value(<<"Expiration">>, Body)))}};
                 _ ->
                     {error, no_credentials_found}
             end;

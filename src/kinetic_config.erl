@@ -95,22 +95,30 @@ region("eu-west-1" ++ _R) -> "eu-west-1".
 
 get_aws_credentials(V, P, MetaData, Role)
         when V =:= undefined orelse P =:= undefined ->
-    {ok, {AccessKeyId, SecretAccessKey, Expiration}} = kinetic_iam:get_aws_keys(MetaData, Role),
-    ExpirationSeconds = calendar:datetime_to_gregorian_seconds(kinetic_iso8601:parse(Expiration)),
-    {ok, {AccessKeyId, SecretAccessKey, ExpirationSeconds}};
-get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) ->
-    {ok, {AccessKeyId, SecretAccessKey, no_expire}}.
+    {ok, AwsCredentials} = kinetic_iam:get_aws_keys(MetaData, Role),
+    AwsCredentials;
+get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) when is_list(AccessKeyId), is_list(SecretAccessKey) ->
+    #aws_credentials{
+        access_key_id = AccessKeyId,
+        secret_access_key = SecretAccessKey,
+        expiration_seconds = no_expire
+    }.
 
-update_data_subsequent(_Opts, Args=#kinetic_arguments{expiration_seconds=no_expire}) ->
-    Args#kinetic_arguments{date=isonow()};
-update_data_subsequent(Opts, Args=#kinetic_arguments{expiration_seconds=CurrentExpirationSeconds}) ->
-    SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
-    case SecondsToExpire < ?EXPIRATION_REFRESH of
-        true ->
-            new_args(Opts);
-        false ->
-            Args#kinetic_arguments{date=isonow()}
+
+update_data_subsequent(Opts, Args=#kinetic_arguments{aws_credentials = AwsCreds}) ->
+    case AwsCreds of
+        #aws_credentials{expiration_seconds=no_expire} ->
+            Args#kinetic_arguments{date=isonow()};
+        #aws_credentials{expiration_seconds=CurrentExpirationSeconds} ->
+            SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
+            case SecondsToExpire < ?EXPIRATION_REFRESH of
+                true ->
+                    new_args(Opts);
+                false ->
+                    Args#kinetic_arguments{date=isonow()}
+            end
     end.
+
 
 new_args(Opts) ->
     ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
@@ -123,17 +131,18 @@ new_args(Opts) ->
     Url = "https://" ++ Host,
     Role = proplists:get_value(iam_role, Opts),
 
-    {ok, {AccessKeyId, SecretAccessKey, ExpirationSeconds}} = 
-        get_aws_credentials(ConfiguredAccessKeyId, ConfiguredSecretAccessKey, MetaData, Role),
+    #kinetic_arguments{
+        region=Region,
+        date=isonow(),
+        host=Host,
+        url=Url,
+        lhttpc_opts=LHttpcOpts,
+        aws_credentials = get_aws_credentials(ConfiguredAccessKeyId,
+                                              ConfiguredSecretAccessKey,
+                                              MetaData, Role)
+    }.
 
-    #kinetic_arguments{access_key_id=AccessKeyId,
-                       secret_access_key=SecretAccessKey,
-                       region=Region,
-                       date=isonow(),
-                       host=Host,
-                       url=Url,
-                       expiration_seconds=ExpirationSeconds,
-                       lhttpc_opts=LHttpcOpts}.
+
 
 isonow() ->
     kinetic_iso8601:format_basic(erlang:universaltime()).

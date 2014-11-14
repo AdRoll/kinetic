@@ -10,13 +10,16 @@ test_setup() ->
         fun("error" ++ _Rest, _) ->
                 {error, something};
            ("no_expire" ++ _Rest, _Role) ->
-                {ok, {"WHATVER", "SECRET", "2038-05-04T10:12:13Z"}};
+                {ok, #aws_credentials{access_key_id="WHATVER", secret_access_key="SECRET",
+                    security_token="TOKEN",
+                    expiration_seconds=64323799933}};
            ("close_expire" ++ _Rest, _Role) ->
-                Timestamp = calendar:gregorian_seconds_to_datetime(
+                Timestamp =
                     calendar:datetime_to_gregorian_seconds(calendar:universal_time()) +
-                    ?EXPIRATION_REFRESH - 1),
-                {ok, {"WHATVER", "SECRET", kinetic_iso8601:format(Timestamp)}}
-
+                    ?EXPIRATION_REFRESH - 1,
+                {ok, #aws_credentials{access_key_id="WHATVER", secret_access_key="SECRET",
+                    security_token="TOKEN",
+                    expiration_seconds=Timestamp}}
         end
     ),
     meck:new(kinetic_utils, [passthrough]),
@@ -82,42 +85,51 @@ test_error_init() ->
 
 test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},
-                                            {aws_secret_access_key, "secret"},
-                                            {metadata_base_url, "doesn't matter"}]),
+        {aws_secret_access_key, "secret"},
+        {metadata_base_url, "doesn't matter"}]),
     ?assert(ets:info(?KINETIC_STREAM) =/= undefined),
-    {ok, #kinetic_arguments{access_key_id="whatever",
-                            secret_access_key="secret",
-                            region="us-east-1",
-                            expiration_seconds=no_expire,
-                            lhttpc_opts=[]}} = kinetic_config:get_args(),
+    {ok, #kinetic_arguments{
+        aws_credentials = #aws_credentials{access_key_id="whatever",
+            secret_access_key="secret",
+            expiration_seconds=no_expire
+        },
+        region="us-east-1",
+        lhttpc_opts=[]}} = kinetic_config:get_args(),
     kinetic_config:update_data([{aws_access_key_id, "whatever"},
-                                {aws_secret_access_key, "secret"},
-                                {metadata_base_url, "doesn't matter"}]),
-    {ok, #kinetic_arguments{access_key_id="whatever",
-                            secret_access_key="secret",
-                            region="us-east-1",
-                            expiration_seconds=no_expire,
-                            lhttpc_opts=[]}} = kinetic_config:get_args(),
+        {aws_secret_access_key, "secret"},
+        {metadata_base_url, "doesn't matter"}]),
+    {ok, #kinetic_arguments{
+        aws_credentials = #aws_credentials{access_key_id="whatever",
+            secret_access_key="secret",
+            expiration_seconds=no_expire},
+        region="us-east-1",
+        lhttpc_opts=[]}} = kinetic_config:get_args(),
     kinetic_config:stop(),
     {error, _} = kinetic_config:get_args(),
     undefined = ets:info(?KINETIC_STREAM).
 
 test_update_data() ->
-    {ok, #kinetic_arguments{access_key_id="WHATVER",
-                            secret_access_key="SECRET",
-                            region="us-east-1",
-                            expiration_seconds=_Expire,
-                            date=_Date}} = kinetic_config:update_data([{metadata_base_url, "close_expire"}]),
-    {ok, #kinetic_arguments{access_key_id="WHATVER",
-                            secret_access_key="SECRET",
-                            region="us-east-1",
-                            expiration_seconds=64323799933,
-                            date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]),
-    {ok, #kinetic_arguments{access_key_id="WHATVER",
-                            secret_access_key="SECRET",
-                            region="us-east-1",
-                            expiration_seconds=64323799933,
-                            date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]).
+    {ok, #kinetic_arguments{
+        aws_credentials = #aws_credentials{access_key_id="WHATVER",
+            secret_access_key="SECRET",
+            security_token="TOKEN",
+            expiration_seconds=_Expire},
+        region="us-east-1",
+        date=_Date}} = kinetic_config:update_data([{metadata_base_url, "close_expire"}]),
+    {ok, #kinetic_arguments{
+        aws_credentials = #aws_credentials{access_key_id="WHATVER",
+            secret_access_key="SECRET",
+            security_token="TOKEN",
+            expiration_seconds=64323799933},
+        region="us-east-1",
+        date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]),
+    {ok, #kinetic_arguments{
+        aws_credentials = #aws_credentials{access_key_id="WHATVER",
+            secret_access_key="SECRET",
+            security_token="TOKEN",
+            expiration_seconds=64323799933},
+        region="us-east-1",
+        date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]).
 
 
 

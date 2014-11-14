@@ -9,15 +9,21 @@
 -define(SECURITY_CREDENTIALS_PARTIAL_URL, "/latest/meta-data/iam/security-credentials/").
 -define(KINESIS_MAX_PUT_SIZE, 51200).
 
--record(kinetic_arguments, {
+-record(aws_credentials, {
     access_key_id :: undefined | string(),
     secret_access_key :: undefined | string(),
+    security_token :: undefined | string(),
+    expiration_seconds :: undefined | pos_integer()
+}).
+
+
+-record(kinetic_arguments, {
     region :: undefined | string(),
     date :: undefined | string(),
     host :: undefined | string(), 
     url :: undefined | string(),
-    expiration_seconds :: undefined | pos_integer(),
-    lhttpc_opts = [] :: [any()]
+    lhttpc_opts = [] :: [any()],
+    aws_credentials :: #aws_credentials{}
 }).
 
 -record(kinetic_stream, {

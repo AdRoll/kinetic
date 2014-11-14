@@ -1,6 +1,66 @@
 -module(kinetic_aws).
 
--export([sign_v4/7, bench/1]).
+-export([authorization_headers_v4/6, sign_v4/7, bench/1, bench_headers/1]).
+
+-include("kinetic.hrl").
+
+authorization_headers_v4(AwsCreds, Service, Region, Date, Target, Body) ->
+
+    #aws_credentials{secret_access_key = SecretAccessKey, access_key_id = AccessKeyId,
+        security_token = SecurityToken} = AwsCreds,
+
+    DateOnly = lists:sublist(Date, 8),
+    EndPoint = kinetic_utils:endpoint(Service, Region),
+
+    % Changes once a day
+    Key0 = crypto:hmac(sha256, "AWS4" ++ SecretAccessKey, DateOnly),
+    Key1 = crypto:hmac(sha256, Key0, Region),
+    Key2 = crypto:hmac(sha256, Key1, Service),
+    SigningKey = crypto:hmac(sha256, Key2, "aws4_request"),
+
+    Headers = [
+        {"Host", EndPoint},
+        {"x-amz-date", Date},
+        {"x-amz-target", Target}
+        |
+        case SecurityToken of
+            undefined -> [];
+            _ -> [{"x-amz-security-token", SecurityToken}]
+        end
+    ],
+
+    NormalizedHeaders = [{string:to_lower(Name), Value} || {Name, Value} <-
+        lists:keysort(1, Headers)],
+
+    SignedHeaders = string:join([Name || {Name, _} <- NormalizedHeaders], ";"),
+
+    % Canonical Request
+    CanonicalRequest = ["POST", $\n,
+        "/", $\n,
+        $\n,
+        [[string:to_lower(Key), $:, Value, $\n] || {Key, Value} <- NormalizedHeaders], $\n,
+        SignedHeaders, $\n,
+        hex_from_bin(crypto:hash(sha256, Body))],
+
+    % String to sign
+    StringToSign = ["AWS4-HMAC-SHA256", $\n,
+        Date, $\n,
+        % Credential scope
+        DateOnly, "/", Region, "/", Service, "/aws4_request", $\n,
+        % hash_encode of the Request
+        hex_from_bin(crypto:hash(sha256, CanonicalRequest))],
+
+    % Signing
+    Signature = hex_from_bin(crypto:hmac(sha256, SigningKey, StringToSign)),
+    AuthorizationHeader =
+        ["AWS4-HMAC-SHA256 Credential=",
+            AccessKeyId, $/, DateOnly, $/, Region, $/, Service, "/aws4_request",
+            ",SignedHeaders=", SignedHeaders, ",Signature=",
+            Signature],
+
+    {ok, [{"Authorization", AuthorizationHeader} | Headers]}.
+
+
 
 % On my Macbook Air from Mid 2013 I can sign about 150MB/sec of Payloads
 % It's basically 3000 signatures per second with Body being 50KB on a single
@@ -15,7 +75,6 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
     Key2 = crypto:hmac(sha256, Key1, Service),
     SigningKey = crypto:hmac(sha256, Key2, "aws4_request"),
 
-
     % Canonical Request
     CanonicalRequest = ["POST", $\n,
                         "/", $\n,
@@ -24,7 +83,7 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
                         "x-amz-date:", Date, $\n,
                         "x-amz-target:", Target, $\n,
                         $\n,
-                        "host;x-amz-date;x-amz-target", $\n,
+                        "host;x-amz-date;x-amz-security-token;x-amz-target", $\n,
                         hex_from_bin(crypto:hash(sha256, Body))],
 
     % String to sign
@@ -44,10 +103,17 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
        ",SignedHeaders=host;x-amz-date;x-amz-target,Signature=",
        Signature]}.
 
+
 bench(N) ->
     S = list_to_binary(string:chars($a, 50000)),
     {Time, _Value} = timer:tc(fun run2/2, [N, S]),
     io:format("~p us~n", [Time]).
+
+bench_headers(N) ->
+    S = list_to_binary(string:chars($a, 50000)),
+    {Time, _Value} = timer:tc(fun run_headers/2, [N, S]),
+    io:format("~p us~n", [Time]).
+
 
 %% Internal
 
@@ -60,6 +126,22 @@ run2(N, V) ->
             "20140629T022822Z", "Kinesis_20131202.ListStreams",
             V),
     run2(N-1, V).
+
+
+run_headers(0, V) ->
+    authorization_headers_v4(
+        #aws_credentials{access_key_id="BLABLABLA", secret_access_key="BLABLABLA",
+            security_token="SECURITY"},
+        "kinesis", "us-east-1", "20140629T022822Z", "Kinesis_20131202.ListStreams",
+        V);
+run_headers(N, V) ->
+    authorization_headers_v4(
+        #aws_credentials{access_key_id="BLABLABLA", secret_access_key="BLABLABLA",
+            security_token="SECURITY"},
+        "kinesis", "us-east-1", "20140629T022822Z", "Kinesis_20131202.ListStreams",
+        V),
+    run_headers(N-1, V).
+
 
 hex_from_bin(Bin) ->
     List = binary_to_list(Bin),
