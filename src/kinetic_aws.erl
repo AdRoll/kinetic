@@ -1,6 +1,6 @@
 -module(kinetic_aws).
 
--export([authorization_headers_v4/6, sign_v4/7]).
+-export([authorization_headers_v4/6, sign_v4/7, bench/1, bench_headers/1]).
 
 -include("kinetic.hrl").
 
@@ -104,7 +104,44 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
        Signature]}.
 
 
+bench(N) ->
+    S = list_to_binary(string:chars($a, 50000)),
+    {Time, _Value} = timer:tc(fun run2/2, [N, S]),
+    io:format("~p us~n", [Time]).
+
+bench_headers(N) ->
+    S = list_to_binary(string:chars($a, 50000)),
+    {Time, _Value} = timer:tc(fun run_headers/2, [N, S]),
+    io:format("~p us~n", [Time]).
+
+
 %% Internal
+
+run2(0, V) ->
+    sign_v4("BLABLABLA", "BLABLABLA", "kinesis", "us-east-1",
+            "20140629T022822Z", "Kinesis_20131202.ListStreams",
+            V);
+run2(N, V) ->
+    sign_v4("BLABLABLA", "BLABLABLA", "kinesis", "us-east-1",
+            "20140629T022822Z", "Kinesis_20131202.ListStreams",
+            V),
+    run2(N-1, V).
+
+
+run_headers(0, V) ->
+    authorization_headers_v4(
+        #aws_credentials{access_key_id="BLABLABLA", secret_access_key="BLABLABLA",
+            security_token="SECURITY"},
+        "kinesis", "us-east-1", "20140629T022822Z", "Kinesis_20131202.ListStreams",
+        V);
+run_headers(N, V) ->
+    authorization_headers_v4(
+        #aws_credentials{access_key_id="BLABLABLA", secret_access_key="BLABLABLA",
+            security_token="SECURITY"},
+        "kinesis", "us-east-1", "20140629T022822Z", "Kinesis_20131202.ListStreams",
+        V),
+    run_headers(N-1, V).
+
 
 hex_from_bin(Bin) ->
     List = binary_to_list(Bin),

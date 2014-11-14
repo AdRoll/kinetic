@@ -43,11 +43,15 @@ test_supervisor() ->
     {ok, Pid} = kinetic_sup:start_link([{aws_access_key_id, "whatever"},
                                          {aws_secret_access_key, "secret"},
                                          {metadata_base_url, "doesn't matter"}]),
-    {ok, #kinetic_arguments{access_key_id="whatever",
-                            secret_access_key="secret",
-                            region="us-east-1",
-                            expiration_seconds=no_expire,
-                            lhttpc_opts=[]}} = kinetic_config:get_args(),
+    {ok, #kinetic_arguments{
+        aws_credentials=#aws_credentials{
+            access_key_id="whatever",
+            secret_access_key="secret",
+            expiration_seconds=no_expire
+        },
+        region="us-east-1",
+        lhttpc_opts=[]}} = kinetic_config:get_args(),
+
     kinetic_sup:stop(Pid),
     {error, _} = kinetic_config:get_args(),
     process_flag(trap_exit, false).
