@@ -54,7 +54,7 @@ init([Opts]) ->
     ets:new(?KINETIC_STREAM, [named_table, set, public, {read_concurrency, true}]),
     {ok, _ClientArgs} = update_data(Opts),
     case timer:apply_interval(1000, ?MODULE, update_data, [Opts]) of
-        {ok, TRef} -> 
+        {ok, TRef} ->
             {ok, #kinetic_config{tref=TRef}};
         Error ->
             {stop, Error}
@@ -124,8 +124,15 @@ new_args(Opts) ->
     ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
     ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
     MetaData = proplists:get_value(metadata_base_url, Opts, ?METADATA_BASE_URL),
-    {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
-    Region = region(Zone),
+
+    Region = case proplists:get_value(region, Opts, undefined) of
+                 undefined ->
+                     {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
+                     region(Zone);
+                 R ->
+                     R
+             end,
+
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
@@ -146,4 +153,3 @@ new_args(Opts) ->
 
 isonow() ->
     kinetic_iso8601:format_basic(erlang:universaltime()).
-
