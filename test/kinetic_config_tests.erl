@@ -73,6 +73,30 @@ kinetic_config_ets_test_() ->
         }
     }.
 
+
+merge_args_test_() ->
+    [{"overriding the region should affect the region, host, and url",
+      ?_test(begin
+                 Args1 = #kinetic_arguments{region = "region1",
+                                            host = Host1 = "host1",
+                                            url = Url1 = "url1"},
+                 #kinetic_arguments{region = Region2,
+                                    host = Host2,
+                                    url = Url2} =
+                     kinetic_config:merge_args(Args1, [{region, "us-east-1"}]),
+                 ?assertEqual("us-east-1", Region2),
+                 ?assertNotEqual(Host1, Host2),
+                 ?assertNotEqual(Url1, Url2),
+                 ok
+             end)},
+     {"it should be possible to override the timeout",
+      ?_test(begin
+                 Args = kinetic_config:merge_args(#kinetic_arguments{timeout = 1}, [{timeout, 2}]),
+                 ?assertEqual(2, Args#kinetic_arguments.timeout),
+                 ok
+             end)}].
+
+
 test_config_env() ->
     application:set_env(kinetic, whatever, value),
     value = kinetic_config:g(whatever),

@@ -64,9 +64,20 @@ kinetic_error_test_() ->
     }.
 
 
+sample_arglists(Payload) ->
+    [[Payload],
+     [Payload, []],
+     [Payload, 12345],
+     [Payload, [{timeout, 12345}]],
+     [Payload, [{region, "us-east-1"}]],
+     [Payload, [{region, "us-east-1"},
+                {timeout, 12345}]]].
+
+
 test_normal_functions() ->
     lists:foreach(fun (F) ->
-            {ok, [{<<"hello">>, <<"world">>}]} = erlang:apply(kinetic, F, [[]])
+           [{ok, [{<<"hello">>, <<"world">>}]} = erlang:apply(kinetic, F, Args)
+             || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
          list_streams, merge_shards, put_record, split_shard]
@@ -85,14 +96,16 @@ test_error_functions() ->
                                               {metadata_base_url, "doesn't matter"},
                                               {lhttpc_opts, error}]),
     lists:foreach(fun (F) ->
-                {error, 400, headers, body} = erlang:apply(kinetic, F, [[]])
+               [{error, 400, headers, body} = erlang:apply(kinetic, F, Args)
+                 || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
          list_streams, merge_shards, put_record, split_shard]
     ),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun (F) ->
-                {error, missing_credentials} = erlang:apply(kinetic, F, [[]])
+               [{error, missing_credentials} = erlang:apply(kinetic, F, Args)
+                 || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
          list_streams, merge_shards, put_record, split_shard]
