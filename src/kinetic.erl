@@ -18,7 +18,6 @@
 -export([split_shard/1, split_shard/2]).
 
 -include("kinetic.hrl").
--define(DEFAULT_TIMEOUT, 5000).
 
 % application behaviour
 
@@ -52,18 +51,24 @@ stop(_) ->
 %% 
 %% Response = {ok, []}
 create_stream(Payload) ->
-    create_stream(Payload, ?DEFAULT_TIMEOUT).
+    create_stream(Payload, []).
+create_stream(Payload, Opts) when is_list(Opts) ->
+    execute("CreateStream", Payload, Opts);
 create_stream(Payload, Timeout) ->
-    execute("CreateStream", Payload, Timeout).
+    create_stream(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}] <- required
 %% 
 %% Response = {ok, []}
 delete_stream(Payload) ->
-    delete_stream(Payload, ?DEFAULT_TIMEOUT).
+    delete_stream(Payload, []).
+delete_stream(Payload, Opts) when is_list(Opts) ->
+    execute("DeleteStream", Payload, Opts);
 delete_stream(Payload, Timeout) ->
-    execute("DeleteStream", Payload, Timeout).
+    delete_stream(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -106,9 +111,12 @@ delete_stream(Payload, Timeout) ->
 %%          {[{<<"StartingSequenceNumber">>,
 %%             <<"21267647932558653966460912964485513218">>}]}}]}]}]}}]
 describe_stream(Payload) ->
-    describe_stream(Payload, ?DEFAULT_TIMEOUT).
+    describe_stream(Payload, []).
+describe_stream(Payload, Opts) when is_list(Opts) ->
+    execute("DescribeStream", Payload, Opts);
 describe_stream(Payload, Timeout) ->
-    execute("DescribeStream", Payload, Timeout).
+    describe_stream(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"Limit">>, integer()}, <- optional
@@ -120,9 +128,12 @@ describe_stream(Payload, Timeout) ->
 %%                   {<<"PartitionKey">>, <<"partitionKey">>},
 %%                   {<<"SequenceNumber">>: <<"21269319989652663814458848515492872193">>}]}]}
 get_records(Payload) ->
-    get_records(Payload, ?DEFAULT_TIMEOUT).
+    get_records(Payload, []).
+get_records(Payload, Opts) when is_list(Opts) ->
+    execute("GetRecords", Payload, Opts);
 get_records(Payload, Timeout) ->
-    execute("GetRecords", Payload, Timeout).
+    get_records(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -134,9 +145,12 @@ get_records(Payload, Timeout) ->
 %%  {<<"ShardIterator">>, <<"AAAAAAAAAAETYyAYzd665+8e0X7JTsASDM/Hr2rSwc0X2qz93iuA3udrjTH+ikQvpQk/1ZcMMLzRdAesqwBGPnsthzU0/CBlM/U8/8oEqGwX3pKw0XyeDNRAAZyXBo3MqkQtCpXhr942BRTjvWKhFz7OmCb2Ncfr8Tl2cBktooi6kJhr+djN5WYkB38Rr3akRgCl9qaU4dY=">>}
 %% ]}
 get_shard_iterator(Payload) ->
-    get_shard_iterator(Payload, ?DEFAULT_TIMEOUT).
+    get_shard_iterator(Payload, []).
+get_shard_iterator(Payload, Opts) when is_list(Opts) ->
+    execute("GetShardIterator", Payload, Opts);
 get_shard_iterator(Payload, Timeout) ->
-    execute("GetShardIterator", Payload, Timeout).
+    get_shard_iterator(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"ExclusiveStartStreamName">>, binary()}, <- optional
@@ -145,9 +159,12 @@ get_shard_iterator(Payload, Timeout) ->
 %% Response = {ok, [{<<"HasMoreStreams">>, false},
 %%                  {<<"StreamNames">>, [<<"exampleStreamName">>]}]}
 list_streams(Payload) ->
-    list_streams(Payload, ?DEFAULT_TIMEOUT).
+    list_streams(Payload, []).
+list_streams(Payload, Opts) when is_list(Opts) ->
+    execute("ListStreams", Payload, Opts);
 list_streams(Payload, Timeout) ->
-    execute("ListStreams", Payload, Timeout).
+    list_streams(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -156,9 +173,12 @@ list_streams(Payload, Timeout) ->
 %%
 %% Response = {ok, []}
 merge_shards(Payload) ->
-    merge_shards(Payload, ?DEFAULT_TIMEOUT).
+    merge_shards(Payload, []).
+merge_shards(Payload, Opts) when is_list(Opts) ->
+    execute("MergeShards", Payload, Opts);
 merge_shards(Payload, Timeout) ->
-    execute("MergeShards", Payload, Timeout).
+    merge_shards(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"Data">>, base64_binary()}, <- required
@@ -170,9 +190,12 @@ merge_shards(Payload, Timeout) ->
 %% Response = {ok, [{<<"SequenceNumber">>, <<"21269319989653637946712965403778482177">>},
 %%                  {<<"ShardId">>, <<"shardId-000000000001">>}]}
 put_record(Payload) ->
-    put_record(Payload, ?DEFAULT_TIMEOUT).
+    put_record(Payload, []).
+put_record(Payload, Opts) when is_list(Opts) ->
+    execute("PutRecord", Payload, Opts);
 put_record(Payload, Timeout) ->
-    execute("PutRecord", Payload, Timeout).
+    put_record(Payload, [{timeout, Timeout}]).
+
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -181,18 +204,22 @@ put_record(Payload, Timeout) ->
 %% 
 %% Response = {ok, []}
 split_shard(Payload) ->
-    split_shard(Payload, ?DEFAULT_TIMEOUT).
+    split_shard(Payload, []).
+split_shard(Payload, Opts) when is_list(Opts) ->
+    execute("SplitShard", Payload, Opts);
 split_shard(Payload, Timeout) ->
-    execute("SplitShard", Payload, Timeout).
+    split_shard(Payload, [{timeout, Timeout}]).
+
 
 %% Internal
-execute(Operation, Payload, Timeout) ->
+execute(Operation, Payload, Opts) ->
     case kinetic_config:get_args() of
         {error, E} ->
             {error, E};
 
-        {ok, #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url,
-                                lhttpc_opts=LHttpcOpts}} ->
+        {ok, Args} ->
+            #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url,
+                               lhttpc_opts=LHttpcOpts, timeout=Timeout} = kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
                     {error, E};

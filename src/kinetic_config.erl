@@ -4,7 +4,7 @@
 -export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 
--export([start_link/1, update_data/1, stop/0, g/1, get_args/0]).
+-export([start_link/1, update_data/1, stop/0, g/1, get_args/0, merge_args/2]).
 
 -include("kinetic.hrl").
 
@@ -127,6 +127,7 @@ new_args(Opts) ->
     {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
     Region = region(Zone),
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
+    DefaultTimeout = proplists:get_value(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
     Role = proplists:get_value(iam_role, Opts),
@@ -137,10 +138,27 @@ new_args(Opts) ->
         host=Host,
         url=Url,
         lhttpc_opts=LHttpcOpts,
+        timeout=DefaultTimeout,
         aws_credentials = get_aws_credentials(ConfiguredAccessKeyId,
                                               ConfiguredSecretAccessKey,
                                               MetaData, Role)
     }.
+
+
+%% todo:
+%% - rewrite new_args to use this
+%% - handle additional args
+merge_args(Args, []) ->
+    Args;
+merge_args(Args, [{region, Region}|Rest]) ->
+    Host = kinetic_utils:endpoint("kinesis", Region),
+    Url = "https://" ++ Host,
+    merge_args(Args#kinetic_arguments{region = Region,
+                                      host = Host,
+                                      url = Url},
+               Rest);
+merge_args(Args, [{timeout, Timeout}|Rest]) ->
+    merge_args(Args#kinetic_arguments{timeout = Timeout}, Rest).
 
 
 
