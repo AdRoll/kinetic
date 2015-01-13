@@ -58,9 +58,9 @@ test_signature_valid() ->
      ["AWS4-HMAC-SHA256 Credential=","BLABLABLA",47,"20140629",47,"us-east-1",
       47,"kinesis","/aws4_request",
       ",SignedHeaders=host;x-amz-date;x-amz-target,Signature=",
-      ["5e","0d","38","47","b0","ec","5c","3e","92","ba","2f","ff","ea","30",
-       "58","32","c3","f4","55","f2","0a","a3","31","5e","b6","1c","5e","95",
-       "c8","d0","43","91"]]} =
+      ["4d","d9","0e","c7","89","9f","0d","98","09","4e","f1","f8","8f","29",
+       "cf","8f","45","ff","73","35","8b","22","bf","a0","5a","e5","36","36",
+       "3e","18","ea","f4"]]} =
      kinetic_aws:sign_v4("BLABLABLA", "BLABLABLA", "kinesis", "us-east-1",
                            "20140629T022822Z", "Kinesis_20131202.ListStreams",
                            "something"),
