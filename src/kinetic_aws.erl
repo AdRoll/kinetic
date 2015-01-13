@@ -83,7 +83,7 @@ sign_v4(AccessKeyId, SecretAccessKey, Service, Region, Date, Target, Body) ->
                         "x-amz-date:", Date, $\n,
                         "x-amz-target:", Target, $\n,
                         $\n,
-                        "host;x-amz-date;x-amz-security-token;x-amz-target", $\n,
+                        "host;x-amz-date;x-amz-target", $\n,
                         hex_from_bin(crypto:hash(sha256, Body))],
 
     % String to sign
