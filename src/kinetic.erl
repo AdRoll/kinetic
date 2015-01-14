@@ -240,7 +240,10 @@ execute(Operation, Payload, Opts) ->
                             {ok, kinetic_utils:decode(ResponseBody)};
 
                         {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, Code, ResponseHeaders, ResponseBody}
+                            {error, Code, ResponseHeaders, ResponseBody};
+
+                        {error, E} ->
+                            {error, E}
                     end
             end
     end.
