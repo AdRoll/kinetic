@@ -44,6 +44,10 @@ get_current_iam_role(MetaData) ->
         {ok, Body} ->
             get_role_from_body(proplists:get_value(<<"Code">>, Body),
                                proplists:get_value(<<"InstanceProfileArn">>, Body));
+        {error, 404} ->
+            %% hologram doesn't currently implement ?IAM_ROLE_URL, but does
+            %% support an alternate means of obtaining the current role name:
+            get_iam_role_fallback(MetaData);
         {error, Error} ->
             {error, Error}
     end.
@@ -56,3 +60,11 @@ get_role_from_body(_, _) ->
     {error, no_success}.
 
 
+get_iam_role_fallback(MetaData) ->
+    case kinetic_utils:fetch_and_return_url(MetaData
+                                            ++ ?SECURITY_CREDENTIALS_PARTIAL_URL, text) of
+        {ok, Body} ->
+            {ok, Body};
+        Error ->
+            Error
+    end.
