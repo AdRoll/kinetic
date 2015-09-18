@@ -1,5 +1,5 @@
--ifndef(KINETIC_HRL). 
--define(KINETIC_HRL, true). 
+-ifndef(KINETIC_HRL).
+-define(KINETIC_HRL, true).
 
 -define(EXPIRATION_REFRESH, 120).
 -define(KINETIC_DATA, kinetic_data).
@@ -14,14 +14,14 @@
     access_key_id :: undefined | string(),
     secret_access_key :: undefined | string(),
     security_token :: undefined | string(),
-    expiration_seconds :: undefined | pos_integer()
+    expiration_seconds :: undefined | no_expire | pos_integer()
 }).
 
 
 -record(kinetic_arguments, {
     region :: undefined | string(),
     date :: undefined | string(),
-    host :: undefined | string(), 
+    host :: undefined | string(),
     url :: undefined | string(),
     lhttpc_opts = [] :: [any()],
     timeout :: undefined | pos_integer(),
@@ -34,8 +34,8 @@
         partitions_number=1000 :: pos_integer(),
         timeout=5000 :: pos_integer(),
         buffer= <<"">> :: binary(),
-        buffer_size=0 :: pos_integer(),
-        current_partition_num=0 :: pos_integer(),
+        buffer_size=0 :: non_neg_integer(),
+        current_partition_num=0 :: non_neg_integer(),
         flush_interval=1000 :: pos_integer(),
         flush_tref :: undefined | term(),
         retries=3 :: pos_integer()
