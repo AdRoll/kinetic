@@ -47,7 +47,7 @@ test_teardown(_) ->
     meck:unload(kinetic),
     meck:unload(supervisor).
 
-kinetic_config_test_() ->
+kinetic_stream_test_() ->
     {inorder,
         {foreach,
             fun test_setup/0,
@@ -165,4 +165,3 @@ wait_for_flush() ->
         1000 ->
             bad
     end.
-
