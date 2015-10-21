@@ -56,8 +56,7 @@ kinetic_config_test_() ->
             fun test_teardown/1,
             [
                 ?_test(test_passed_metadata()),
-                ?_test(test_config_env()),
-                ?_test(test_error_init())
+                ?_test(test_config_env())
             ]
         }
     }.
@@ -102,10 +101,6 @@ test_config_env() ->
     value = kinetic_config:g(whatever),
     undefined = kinetic_config:g(something).
 
-test_error_init() ->
-    process_flag(trap_exit, true),
-    {error, {error, broken}} = kinetic_config:start_link([{metadata_base_url, "no_expire"}, {should_err, true}]),
-    process_flag(trap_exit, false).
 
 test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},
@@ -154,6 +149,3 @@ test_update_data() ->
             expiration_seconds=64323799933},
         region="us-east-1",
         date=_Date3}} = kinetic_config:update_data([{metadata_base_url, "no_expire"}]).
-
-
-

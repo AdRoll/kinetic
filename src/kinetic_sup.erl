@@ -6,10 +6,6 @@
 
 -include("kinetic.hrl").
 
--type child() :: {atom(), {atom(), atom(), list(any)},
-    atom(), integer(), atom(), list(atom())}.
-
--spec start_link() -> {ok, pid()} | {error, atom()}.
 start_link() ->
     start_link([]).
 
@@ -22,7 +18,6 @@ start_link([]) ->
 start_link(Args) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, Args).
 
--spec init(any()) -> {ok, {{atom(), integer(), integer()}, [child()]}}.
 init(Opts) ->
     KineticConfig = {kinetic_config,
                      {kinetic_config, start_link, [Opts]},
@@ -42,4 +37,3 @@ stop(Pid) ->
         {'DOWN', MRef, process, _, _} ->
             ok
     end.
-
