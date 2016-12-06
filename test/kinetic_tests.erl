@@ -11,7 +11,7 @@ test_arg_setup(Opts) ->
     meck:expect(kinetic_utils, fetch_and_return_url,
                 fun(_MetaData, text) -> {ok, "us-east-1b"} end),
 
-    {ok, _args} = kinetic_config:update_data(Opts), 
+    {ok, _args} = kinetic_config:update_data(Opts),
 
     meck:new(lhttpc),
     meck:expect(lhttpc, request, fun
@@ -80,14 +80,14 @@ test_normal_functions() ->
              || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard]
+         list_streams, merge_shards, put_record, split_shard, put_records]
     ),
 
     lists:foreach(fun (F) ->
                 {error, _} = erlang:apply(kinetic, F, [{whatever}])
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard]
+         list_streams, merge_shards, put_record, split_shard, put_records]
     ).
 
 test_error_functions() ->
@@ -100,7 +100,7 @@ test_error_functions() ->
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard]
+         list_streams, merge_shards, put_record, split_shard, put_records]
     ),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun (F) ->
@@ -108,7 +108,7 @@ test_error_functions() ->
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard]
+         list_streams, merge_shards, put_record, split_shard, put_records]
     ).
 
 
