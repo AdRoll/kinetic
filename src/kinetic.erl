@@ -207,16 +207,37 @@ put_record(Payload, Timeout) ->
 %%
 %% Response = {ok, [{<<"FailedRecordCount">>, binary()},
 %%                  {<<"Records">>, [
-%%                                     {
+%%                                     {[
 %%                                         {<<"ErrorCode">>, binary()},
 %%                                         {<<"ErrorMessage">>, binary()},
 %%                                         {<<"SequenceNumber">>, binary()},
 %%                                         {<<"ShardId">>, binary()}
-%%                                     }]}]}
+%%                                     ]}]}]}
+%% May return {ok, SuccessfulRecords, FailedRecords} | {error, Reason} | {error, {Reason, FailedRecords}}
+%% SuccessfulRecords : [{SequenceNumber, ShardId}]
+%% FailedRecords     : [{ErrorCode, ErrorMessage}]
 put_records(Payload) ->
     put_records(Payload, []).
 put_records(Payload, Opts) when is_list(Opts) ->
-    execute("PutRecords", Payload, Opts);
+    case execute("PutRecords", Payload, Opts) of
+        {error, {Code, ResponseHeaders, ResponseBody}} ->
+            {error, {Code, ResponseHeaders, ResponseBody}};
+        {error, E} ->
+            {error, E};
+        {ok, Response} ->
+            %% Successfully put records contain 'SequenceNumber' field, split the sets on this charactaristic
+            {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
+            {RawSRecords, RawFRecords} = lists:partition(fun({E}) ->
+                        lists:keymember(<<"SequenceNumber">>, 1, E) end, Records),
+            SuccessfulRecords = [{SequenceNumber, ShardId} || {[{<<"SequenceNumber">>, SequenceNumber}, {<<"ShardId">>, ShardId}]} <- RawSRecords],
+            FailedRecords = [{ErrorCode, ErrorMessage} || {[{<<"ErrorCode">>, ErrorCode}, {<<"ErrorMessage">>, ErrorMessage}]} <- RawFRecords],
+            case SuccessfulRecords of
+                [] ->
+                    {error, {all_records_failed, FailedRecords}};
+                _ ->
+                    {ok, SuccessfulRecords, FailedRecords}
+            end
+    end;
 put_records(Payload, Timeout) ->
     put_records(Payload, [{timeout, Timeout}]).
 
@@ -264,7 +285,7 @@ execute(Operation, Payload, Opts) ->
                             {ok, kinetic_utils:decode(ResponseBody)};
 
                         {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, Code, ResponseHeaders, ResponseBody};
+                            {error, {Code, ResponseHeaders, ResponseBody}};
 
                         {error, E} ->
                             {error, E}

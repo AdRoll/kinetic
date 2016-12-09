@@ -80,14 +80,14 @@ test_normal_functions() ->
              || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard, put_records]
+         list_streams, merge_shards, put_record, split_shard]
     ),
 
     lists:foreach(fun (F) ->
                 {error, _} = erlang:apply(kinetic, F, [{whatever}])
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard, put_records]
+         list_streams, merge_shards, put_record, split_shard]
     ).
 
 test_error_functions() ->
@@ -96,11 +96,11 @@ test_error_functions() ->
                                               {metadata_base_url, "doesn't matter"},
                                               {lhttpc_opts, error}]),
     lists:foreach(fun (F) ->
-               [{error, 400, headers, body} = erlang:apply(kinetic, F, Args)
+                [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard, put_records]
+         list_streams, merge_shards, put_record, split_shard]
     ),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun (F) ->
@@ -108,7 +108,39 @@ test_error_functions() ->
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
-         list_streams, merge_shards, put_record, split_shard, put_records]
+         list_streams, merge_shards, put_record, split_shard]
     ).
 
+put_records_test_() ->
+    {setup,
+     fun test_setup/0,
+     fun test_teardown/1,
+     fun test_put_records/0
+    }.
 
+test_put_records() ->
+    %% Test successful puts
+    meck:expect(lhttpc, request, fun
+        (_Url, post, _Headers, _Body, _Timeout, error) ->
+                {ok, {{400, bla}, headers, body}};
+        (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
+            {ok, {{200, bla}, headers, <<"{\"FailedRecordCount\": 1,
+                    \"Records\":
+                        [{\"SequenceNumber\": \"10\", \"ShardId\": \"5\" },
+                         {\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
+
+    {ok, SuccessfulRecords, FailedRecords} = erlang:apply(kinetic, put_records, [[]]),
+    ?assertEqual([{<<"10">>, <<"5">>}], SuccessfulRecords),
+    ?assertEqual([{<<"404">>, <<"Not found">>}], FailedRecords),
+
+    %% test error on no successful puts
+    meck:expect(lhttpc, request, fun
+        (_Url, post, _Headers, _Body, _Timeout, error) ->
+                {ok, {{400, bla}, headers, body}};
+        (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
+            {ok, {{200, bla}, headers, <<"{\"FailedRecordCount\": 1,
+                    \"Records\":
+                        [{\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
+
+    Expectedfailure = {error, {all_records_failed, [{<<"404">>, <<"Not found">>}]}},
+    ?assertEqual(Expectedfailure, erlang:apply(kinetic, put_records, [[]])).
