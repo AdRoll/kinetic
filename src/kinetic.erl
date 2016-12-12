@@ -220,17 +220,16 @@ put_records(Payload) ->
     put_records(Payload, []).
 put_records(Payload, Opts) when is_list(Opts) ->
     case execute("PutRecords", Payload, Opts) of
-        {error, {Code, ResponseHeaders, ResponseBody}} ->
-            {error, {Code, ResponseHeaders, ResponseBody}};
         {error, E} ->
             {error, E};
         {ok, Response} ->
-            %% Successfully put records contain 'SequenceNumber' field, split the sets on this charactaristic
             {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
+            %% Successfully put records contain 'SequenceNumber' field, split the sets on this charactaristic
             {RawSRecords, RawFRecords} = lists:partition(fun({E}) ->
-                        lists:keymember(<<"SequenceNumber">>, 1, E) end, Records),
-            SuccessfulRecords = [{SequenceNumber, ShardId} || {[{<<"SequenceNumber">>, SequenceNumber}, {<<"ShardId">>, ShardId}]} <- RawSRecords],
-            FailedRecords = [{ErrorCode, ErrorMessage} || {[{<<"ErrorCode">>, ErrorCode}, {<<"ErrorMessage">>, ErrorMessage}]} <- RawFRecords],
+                                                            lists:keymember(<<"SequenceNumber">>, 1, E)
+                                                         end, Records),
+            SuccessfulRecords = records_builder({<<"SequenceNumber">>, <<"ShardId">>}, RawSRecords),
+            FailedRecords = records_builder({<<"ErrorCode">>, <<"ErrorMessage">>}, RawFRecords),
             case SuccessfulRecords of
                 [] ->
                     {error, {all_records_failed, FailedRecords}};
@@ -240,6 +239,14 @@ put_records(Payload, Opts) when is_list(Opts) ->
     end;
 put_records(Payload, Timeout) ->
     put_records(Payload, [{timeout, Timeout}]).
+
+
+records_builder({Key1, Key2}, Records) ->
+    [begin
+        {Key1, Value1} = lists:keyfind(Key1, 1, R),
+        {Key2, Value2} = lists:keyfind(Key2, 1, R),
+        {Value1, Value2}
+     end || {R} <- Records].
 
 
 %%
