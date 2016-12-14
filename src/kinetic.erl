@@ -15,6 +15,7 @@
 -export([get_shard_iterator/1, get_shard_iterator/2]).
 -export([merge_shards/1, merge_shards/2]).
 -export([put_record/1, put_record/2]).
+-export([put_records/1, put_records/2]).
 -export([split_shard/1, split_shard/2]).
 
 -include("kinetic.hrl").
@@ -48,7 +49,7 @@ stop(_) ->
 %%
 %% Payload = [{<<"ShardCount">>, integer()}, <- required
 %%            {<<"StreamName">>, binary()}] <- required
-%% 
+%%
 %% Response = {ok, []}
 create_stream(Payload) ->
     create_stream(Payload, []).
@@ -60,7 +61,7 @@ create_stream(Payload, Timeout) ->
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}] <- required
-%% 
+%%
 %% Response = {ok, []}
 delete_stream(Payload) ->
     delete_stream(Payload, []).
@@ -121,7 +122,7 @@ describe_stream(Payload, Timeout) ->
 %%
 %% Payload = [{<<"Limit">>, integer()}, <- optional
 %%            {<<"ShardIterator">>, binary()}] <- required
-%% 
+%%
 %% Response = {ok, [
 %%  {<<"NextShardIterator">>, <<"AAAAAAAAAAHsW8zCWf9164uy8Epue6WS3w6wmj4a4USt+CNvMd6uXQ+HL5vAJMznqqC0DLKsIjuoiTi1BpT6nW0LN2M2D56zM5H8anHm30Gbri9ua+qaGgj+3XTyvbhpERfrezgLHbPB/rIcVpykJbaSj5tmcXYRmFnqZBEyHwtZYFmh6hvWVFkIwLuMZLMrpWhG5r5hzkE=">>},
 %%  {<<"Records">>, [{<<"Data">>, <<"XzxkYXRhPl8w">>},
@@ -140,7 +141,7 @@ get_records(Payload, Timeout) ->
 %%            {<<"ShardId">>, binary()},    <- required
 %%            {<<"ShardIteratorType">>, <<"AT_SEQUENCE_NUMBER | AFTER_SEQUENCE_NUMBER | TRIM_HORIZON | LATEST">>}, <- required
 %%            {<<"StartingSequenceNumber">>, binary()}] <- optional
-%% 
+%%
 %% Response = {ok, [
 %%  {<<"ShardIterator">>, <<"AAAAAAAAAAETYyAYzd665+8e0X7JTsASDM/Hr2rSwc0X2qz93iuA3udrjTH+ikQvpQk/1ZcMMLzRdAesqwBGPnsthzU0/CBlM/U8/8oEqGwX3pKw0XyeDNRAAZyXBo3MqkQtCpXhr942BRTjvWKhFz7OmCb2Ncfr8Tl2cBktooi6kJhr+djN5WYkB38Rr3akRgCl9qaU4dY=">>}
 %% ]}
@@ -155,7 +156,7 @@ get_shard_iterator(Payload, Timeout) ->
 %%
 %% Payload = [{<<"ExclusiveStartStreamName">>, binary()}, <- optional
 %%            {<<"Limit">>, integer()}] <- optional
-%% 
+%%
 %% Response = {ok, [{<<"HasMoreStreams">>, false},
 %%                  {<<"StreamNames">>, [<<"exampleStreamName">>]}]}
 list_streams(Payload) ->
@@ -186,7 +187,7 @@ merge_shards(Payload, Timeout) ->
 %%            {<<"PartitionKey">>, binary()}, <- required
 %%            {<<"SequenceNumberForOrdering">>, binary()}, <- optional
 %%            {<<"StreamName">>, binary()}] <- required
-%% 
+%%
 %% Response = {ok, [{<<"SequenceNumber">>, <<"21269319989653637946712965403778482177">>},
 %%                  {<<"ShardId">>, <<"shardId-000000000001">>}]}
 put_record(Payload) ->
@@ -198,10 +199,61 @@ put_record(Payload, Timeout) ->
 
 
 %%
+%% Payload = [{<<"Records">>, [
+%%                              {<<"Data">>, base64_binary()}, <- required
+%%                              {<<"PartitionKey">>, binary()} <- required
+%%                            ]}
+%%            {<<"StreamName">>, binary()}] <- required
+%%
+%% Response = {ok, [{<<"FailedRecordCount">>, binary()},
+%%                  {<<"Records">>, [
+%%                                     {[
+%%                                         {<<"ErrorCode">>, binary()},
+%%                                         {<<"ErrorMessage">>, binary()},
+%%                                         {<<"SequenceNumber">>, binary()},
+%%                                         {<<"ShardId">>, binary()}
+%%                                     ]}]}]}
+%% May return {ok, SuccessfulRecords, FailedRecords} | {error, Reason} | {error, {Reason, FailedRecords}}
+%% SuccessfulRecords : [{SequenceNumber, ShardId}]
+%% FailedRecords     : [{ErrorCode, ErrorMessage}]
+put_records(Payload) ->
+    put_records(Payload, []).
+put_records(Payload, Opts) when is_list(Opts) ->
+    case execute("PutRecords", Payload, Opts) of
+        {error, E} ->
+            {error, E};
+        {ok, Response} ->
+            {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
+            %% Successfully put records contain 'SequenceNumber' field, split the sets on this charactaristic
+            {RawSRecords, RawFRecords} = lists:partition(fun({E}) ->
+                                                            lists:keymember(<<"SequenceNumber">>, 1, E)
+                                                         end, Records),
+            SuccessfulRecords = records_builder({<<"SequenceNumber">>, <<"ShardId">>}, RawSRecords),
+            FailedRecords = records_builder({<<"ErrorCode">>, <<"ErrorMessage">>}, RawFRecords),
+            case SuccessfulRecords of
+                [] ->
+                    {error, {all_records_failed, FailedRecords}};
+                _ ->
+                    {ok, SuccessfulRecords, FailedRecords}
+            end
+    end;
+put_records(Payload, Timeout) ->
+    put_records(Payload, [{timeout, Timeout}]).
+
+
+records_builder({Key1, Key2}, Records) ->
+    [begin
+        {Key1, Value1} = lists:keyfind(Key1, 1, R),
+        {Key2, Value2} = lists:keyfind(Key2, 1, R),
+        {Value1, Value2}
+     end || {R} <- Records].
+
+
+%%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
 %%            {<<"ShardToSplit">>, binary()},      <- required
 %%            {<<"NewStartingHashKey">>, binary()}] <- required
-%% 
+%%
 %% Response = {ok, []}
 split_shard(Payload) ->
     split_shard(Payload, []).
@@ -240,12 +292,10 @@ execute(Operation, Payload, Opts) ->
                             {ok, kinetic_utils:decode(ResponseBody)};
 
                         {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, Code, ResponseHeaders, ResponseBody};
+                            {error, {Code, ResponseHeaders, ResponseBody}};
 
                         {error, E} ->
                             {error, E}
                     end
             end
     end.
-
-

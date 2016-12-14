@@ -18,10 +18,10 @@ test_setup() ->
                 end,
                 case proplists:get_value(<<"PartitionKey">>, Payload) of
                     <<"otherstuff">> ->
-                        {error, 400, headers, <<"{\"__type\": \"OtherStuff\"}">>};
+                        {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
 
                     <<"throughput">> ->
-                        {error, 400, headers, <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>};
+                        {error, {400, headers, <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
 
                     _ ->
                         {ok, done}
@@ -143,7 +143,7 @@ test_retries() ->
     Payload0 = [{<<"Data">>, base64:encode(SmallData)},
                 {<<"PartitionKey">>, P},
                 {<<"StreamName">>, S}],
-    {error, _, _, _} = kinetic_stream:send_to_kinesis(S, SmallData, P, 5000, 3),
+    {error, {_, _, _}} = kinetic_stream:send_to_kinesis(S, SmallData, P, 5000, 3),
     1 = meck:num_calls(kinetic, put_record, [Payload0, 5000]),
     ok = try kinetic_stream:send_to_kinesis(S, SmallData, <<"throughput">>, 5000, 3) of
         _ ->

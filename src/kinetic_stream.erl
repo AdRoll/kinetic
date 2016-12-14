@@ -154,7 +154,7 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
         {ok, _} ->
             {ok, done};
 
-        {error, Code, Headers, RawBody} ->
+        {error, {Code, Headers, RawBody}} ->
             Body = kinetic_utils:decode(RawBody),
             case proplists:get_value(<<"__type">>, Body) of
                 <<"ProvisionedThroughputExceededException">> ->
@@ -163,7 +163,7 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
 
                 _ ->
                     error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody]),
-                    {error, Code, Headers, Body}
+                    {error, {Code, Headers, Body}}
             end
     end.
 

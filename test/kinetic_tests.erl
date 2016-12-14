@@ -11,7 +11,7 @@ test_arg_setup(Opts) ->
     meck:expect(kinetic_utils, fetch_and_return_url,
                 fun(_MetaData, text) -> {ok, "us-east-1b"} end),
 
-    {ok, _args} = kinetic_config:update_data(Opts), 
+    {ok, _args} = kinetic_config:update_data(Opts),
 
     meck:new(lhttpc),
     meck:expect(lhttpc, request, fun
@@ -96,7 +96,7 @@ test_error_functions() ->
                                               {metadata_base_url, "doesn't matter"},
                                               {lhttpc_opts, error}]),
     lists:foreach(fun (F) ->
-               [{error, 400, headers, body} = erlang:apply(kinetic, F, Args)
+                [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
@@ -111,4 +111,36 @@ test_error_functions() ->
          list_streams, merge_shards, put_record, split_shard]
     ).
 
+put_records_test_() ->
+    {setup,
+     fun test_setup/0,
+     fun test_teardown/1,
+     fun test_put_records/0
+    }.
 
+test_put_records() ->
+    %% Test successful puts
+    meck:expect(lhttpc, request, fun
+        (_Url, post, _Headers, _Body, _Timeout, error) ->
+                {ok, {{400, bla}, headers, body}};
+        (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
+            {ok, {{200, bla}, headers, <<"{\"FailedRecordCount\": 1,
+                    \"Records\":
+                        [{\"SequenceNumber\": \"10\", \"ShardId\": \"5\" },
+                         {\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
+
+    {ok, SuccessfulRecords, FailedRecords} = erlang:apply(kinetic, put_records, [[]]),
+    ?assertEqual([{<<"10">>, <<"5">>}], SuccessfulRecords),
+    ?assertEqual([{<<"404">>, <<"Not found">>}], FailedRecords),
+
+    %% test error on no successful puts
+    meck:expect(lhttpc, request, fun
+        (_Url, post, _Headers, _Body, _Timeout, error) ->
+                {ok, {{400, bla}, headers, body}};
+        (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
+            {ok, {{200, bla}, headers, <<"{\"FailedRecordCount\": 1,
+                    \"Records\":
+                        [{\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
+
+    Expectedfailure = {error, {all_records_failed, [{<<"404">>, <<"Not found">>}]}},
+    ?assertEqual(Expectedfailure, erlang:apply(kinetic, put_records, [[]])).
