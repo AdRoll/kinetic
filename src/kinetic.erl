@@ -283,7 +283,6 @@ execute(Operation, Payload, Opts) ->
 
 
 record_status(Record) ->
-    io:format(user, "Record is ~p~n", [Record]),
     case lists:keymember(<<"SequenceNumber">>, 1, Record) of
         true -> ok;
         false -> {error, {get_value(<<"ErrorCode">>, Record),
