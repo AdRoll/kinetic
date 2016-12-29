@@ -121,11 +121,11 @@ update_data_subsequent(Opts, Args=#kinetic_arguments{aws_credentials = AwsCreds}
 
 
 new_args(Opts) ->
-    ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
-    ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
-    MetaData = proplists:get_value(metadata_base_url, Opts, ?METADATA_BASE_URL),
+    ConfiguredAccessKeyId = arg_or_env(aws_access_key_id, Opts),
+    ConfiguredSecretAccessKey = arg_or_env(aws_secret_access_key, Opts),
+    MetaData = arg_or_env(metadata_base_url, Opts, ?METADATA_BASE_URL),
 
-    Region = case proplists:get_value(region, Opts, undefined) of
+    Region = case arg_or_env(region, Opts) of
                  undefined ->
                      {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
                      region(Zone);
@@ -133,11 +133,11 @@ new_args(Opts) ->
                      R
              end,
 
-    LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
-    DefaultTimeout = proplists:get_value(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
+    LHttpcOpts = arg_or_env(lhttpc_opts, Opts, []),
+    DefaultTimeout = arg_or_env(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
-    Role = proplists:get_value(iam_role, Opts),
+    Role = arg_or_env(iam_role, Opts),
 
     #kinetic_arguments{
         region=Region,
@@ -152,9 +152,26 @@ new_args(Opts) ->
     }.
 
 
-%% todo:
-%% - rewrite new_args to use this
-%% - handle additional args
+%% return the value of the Name'd plist entry from Plist if not undefined, otherwise the
+%% value of the corresponding application environment variable if likewise not undefined,
+%% otherwise Default.
+arg_or_env(Name, Plist, Default) ->
+    case proplists:get_value(Name, Plist) of
+        undefined ->
+            case g(Name) of
+                undefined ->
+                    Default;
+                EnvValue ->
+                    EnvValue
+            end;
+        PlistValue ->
+            PlistValue
+    end.
+arg_or_env(Name, Plist) ->
+    arg_or_env(Name, Plist, undefined).
+
+
+%% merge some operation-specific arguments into the defaults in Args.
 merge_args(Args, []) ->
     Args;
 merge_args(Args, [{region, Region}|Rest]) ->

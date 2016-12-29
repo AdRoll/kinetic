@@ -5,6 +5,10 @@
   {modules, []},
   {registered, [kinetic_config]},
   {applications, [kernel, stdlib, inets, crypto, ssl, jiffy, lhttpc]},
-  {env, []},
-  {mod, {kinetic,[]}}
+  {mod, {kinetic_app, []}},
+  {env, [{metadata_base_url, undefined},
+         {aws_access_key_id, undefined},
+         {aws_secret_access_key, undefined},
+         {iam_role, undefined},
+         {lhttpc_opts, undefined}]}
  ]}.

@@ -1,11 +1,6 @@
 -module(kinetic).
--behaviour(application).
-
 
 -export([start/0, stop/0]).
--export([start/2, stop/1]).
--export([start/1]).
-
 
 -export([create_stream/1, create_stream/2]).
 -export([list_streams/1, list_streams/2]).
@@ -20,29 +15,13 @@
 
 -include("kinetic.hrl").
 
-% application behaviour
 
--spec start() -> ok | {error, any()}.
 start() ->
     application:start(kinetic).
 
-
--spec stop() -> ok | {error, any()}.
 stop() ->
     application:stop(kinetic).
 
-
--spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
-    {ok, pid()}.
-start(Opts) when is_list(Opts) ->
-    kinetic_sup:start_link(Opts).
-
-start(_, Opts) ->
-    kinetic_sup:start_link(Opts).
-
--spec stop(any()) -> ok.
-stop(_) ->
-    ok.
 
 % Public API
 
