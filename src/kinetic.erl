@@ -213,9 +213,9 @@ put_record(Payload, Timeout) ->
 %%                                         {<<"SequenceNumber">>, binary()},
 %%                                         {<<"ShardId">>, binary()}
 %%                                     ]}]}]}
-%% May return {ok, SuccessfulRecords, FailedRecords} | {error, Reason} | {error, {Reason, FailedRecords}}
-%% SuccessfulRecords : [{SequenceNumber, ShardId}]
-%% FailedRecords     : [{ErrorCode, ErrorMessage}]
+%%
+%% Returns {error, Reason} | {ok, list(ok | {error, Reason})}.
+%% In the latter case, the list contains a result for each input record, in order.
 put_records(Payload) ->
     put_records(Payload, []).
 put_records(Payload, Opts) when is_list(Opts) ->
@@ -224,29 +224,10 @@ put_records(Payload, Opts) when is_list(Opts) ->
             {error, E};
         {ok, Response} ->
             {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
-            %% Successfully put records contain 'SequenceNumber' field, split the sets on this charactaristic
-            {RawSRecords, RawFRecords} = lists:partition(fun({E}) ->
-                                                            lists:keymember(<<"SequenceNumber">>, 1, E)
-                                                         end, Records),
-            SuccessfulRecords = records_builder({<<"SequenceNumber">>, <<"ShardId">>}, RawSRecords),
-            FailedRecords = records_builder({<<"ErrorCode">>, <<"ErrorMessage">>}, RawFRecords),
-            case SuccessfulRecords of
-                [] ->
-                    {error, {all_records_failed, FailedRecords}};
-                _ ->
-                    {ok, SuccessfulRecords, FailedRecords}
-            end
+            {ok, [record_status(R) || {R} <- Records]}
     end;
 put_records(Payload, Timeout) ->
     put_records(Payload, [{timeout, Timeout}]).
-
-
-records_builder({Key1, Key2}, Records) ->
-    [begin
-        {Key1, Value1} = lists:keyfind(Key1, 1, R),
-        {Key2, Value2} = lists:keyfind(Key2, 1, R),
-        {Value1, Value2}
-     end || {R} <- Records].
 
 
 %%
@@ -299,3 +280,17 @@ execute(Operation, Payload, Opts) ->
                     end
             end
     end.
+
+
+record_status(Record) ->
+    io:format(user, "Record is ~p~n", [Record]),
+    case lists:keymember(<<"SequenceNumber">>, 1, Record) of
+        true -> ok;
+        false -> {error, {get_value(<<"ErrorCode">>, Record),
+                          get_value(<<"ErrorMessage">>, Record)}}
+    end.
+
+
+get_value(Key, TupleList) ->
+    {Key, Value} = lists:keyfind(Key, 1, TupleList),
+    Value.
