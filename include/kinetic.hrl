@@ -3,7 +3,6 @@
 
 -define(EXPIRATION_REFRESH, 120).
 -define(KINETIC_DATA, kinetic_data).
--define(KINETIC_STREAM, kinetic_stream).
 -define(KINETIC_ARGS_KEY, args).
 -define(IAM_ROLE_URL, "/latest/meta-data/iam/info").
 -define(SECURITY_CREDENTIALS_PARTIAL_URL, "/latest/meta-data/iam/security-credentials/").
@@ -27,19 +26,5 @@
     timeout :: undefined | pos_integer(),
     aws_credentials :: #aws_credentials{}
 }).
-
--record(kinetic_stream, {
-        stream_name :: binary(),
-        base_partition_name :: binary(),
-        partitions_number=1000 :: pos_integer(),
-        timeout=5000 :: pos_integer(),
-        buffer= <<"">> :: binary(),
-        buffer_size=0 :: non_neg_integer(),
-        current_partition_num=0 :: non_neg_integer(),
-        flush_interval=1000 :: pos_integer(),
-        flush_tref :: undefined | term(),
-        retries=3 :: pos_integer()
-}).
-
 
 -endif.

@@ -106,7 +106,7 @@ test_passed_metadata() ->
     {ok, _Pid} = kinetic_config:start_link([{aws_access_key_id, "whatever"},
         {aws_secret_access_key, "secret"},
         {metadata_base_url, "doesn't matter"}]),
-    ?assert(ets:info(?KINETIC_STREAM) =/= undefined),
+    ?assert(ets:info(?KINETIC_DATA) =/= undefined),
     {ok, #kinetic_arguments{
         aws_credentials = #aws_credentials{access_key_id="whatever",
             secret_access_key="secret",
@@ -125,7 +125,7 @@ test_passed_metadata() ->
         lhttpc_opts=[]}} = kinetic_config:get_args(),
     kinetic_config:stop(),
     {error, _} = kinetic_config:get_args(),
-    undefined = ets:info(?KINETIC_STREAM).
+    undefined = ets:info(?KINETIC_DATA).
 
 test_update_data() ->
     {ok, #kinetic_arguments{
