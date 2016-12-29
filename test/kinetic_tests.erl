@@ -119,7 +119,6 @@ put_records_test_() ->
     }.
 
 test_put_records() ->
-    %% Test successful puts
     meck:expect(lhttpc, request, fun
         (_Url, post, _Headers, _Body, _Timeout, error) ->
                 {ok, {{400, bla}, headers, body}};
@@ -129,18 +128,6 @@ test_put_records() ->
                         [{\"SequenceNumber\": \"10\", \"ShardId\": \"5\" },
                          {\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
 
-    {ok, SuccessfulRecords, FailedRecords} = erlang:apply(kinetic, put_records, [[]]),
-    ?assertEqual([{<<"10">>, <<"5">>}], SuccessfulRecords),
-    ?assertEqual([{<<"404">>, <<"Not found">>}], FailedRecords),
-
-    %% test error on no successful puts
-    meck:expect(lhttpc, request, fun
-        (_Url, post, _Headers, _Body, _Timeout, error) ->
-                {ok, {{400, bla}, headers, body}};
-        (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
-            {ok, {{200, bla}, headers, <<"{\"FailedRecordCount\": 1,
-                    \"Records\":
-                        [{\"ErrorCode\": \"404\", \"ErrorMessage\": \"Not found\"}]}">>}} end),
-
-    Expectedfailure = {error, {all_records_failed, [{<<"404">>, <<"Not found">>}]}},
-    ?assertEqual(Expectedfailure, erlang:apply(kinetic, put_records, [[]])).
+    {ok, [Result1, Result2]} = erlang:apply(kinetic, put_records, [[]]),
+    ?assertEqual(ok, Result1),
+    ?assertEqual({error, {<<"404">>, <<"Not found">>}}, Result2).
