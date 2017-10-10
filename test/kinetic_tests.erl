@@ -6,10 +6,17 @@
 
 
 test_arg_setup(Opts) ->
+    meck:new(erliam, [passthrough]),
+    meck:expect(erliam, invalidate, 0, ok),
+    meck:expect(erliam, credentials, 0,
+                awsv4:credentials_from_plist(
+                  [{access_key_id, proplists:get_value(aws_access_key_id, Opts)},
+                   {secret_access_key, proplists:get_value(aws_secret_access_key, Opts)}])),
+    application:ensure_all_started(ssl),
+
     ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]),
-    meck:new(kinetic_utils, [passthrough]),
-    meck:expect(kinetic_utils, fetch_and_return_url,
-                fun(_MetaData, text) -> {ok, "us-east-1b"} end),
+    meck:new(imds, [passthrough]),
+    meck:expect(imds, zone, 0, {ok, "us-east-1b"}),
 
     {ok, _args} = kinetic_config:update_data(Opts),
 
@@ -21,25 +28,27 @@ test_arg_setup(Opts) ->
                 {ok, {{200, bla}, headers, <<"{\"hello\": \"world\"}">>}}
     end).
 
+
 test_setup() ->
     Opts = [{aws_access_key_id, "whatever"},
-            {aws_secret_access_key, "secret"},
-            {metadata_base_url, "doesn't matter"}],
+            {aws_secret_access_key, "secret"}],
     test_arg_setup(Opts).
+
 
 test_error_setup() ->
     Opts = [{aws_access_key_id, "whatever"},
             {aws_secret_access_key, "secret"},
-            {metadata_base_url, "doesn't matter"},
             {lhttpc_opts, error}],
     test_arg_setup(Opts).
 
 
-
 test_teardown(_) ->
     ets:delete(?KINETIC_DATA),
-    meck:unload(kinetic_utils),
-    meck:unload(lhttpc).
+    meck:unload(imds),
+    meck:unload(lhttpc),
+    meck:unload(erliam),
+    application:stop(ssl).
+
 
 kinetic_test_() ->
     {inorder,
@@ -51,6 +60,7 @@ kinetic_test_() ->
             ]
         }
     }.
+
 
 kinetic_error_test_() ->
     {inorder,
@@ -90,10 +100,10 @@ test_normal_functions() ->
          list_streams, merge_shards, put_record, split_shard]
     ).
 
+
 test_error_functions() ->
     {ok, _args} = kinetic_config:update_data([{aws_access_key_id, "whatever"},
                                               {aws_secret_access_key, "secret"},
-                                              {metadata_base_url, "doesn't matter"},
                                               {lhttpc_opts, error}]),
     lists:foreach(fun (F) ->
                 [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
@@ -104,12 +114,13 @@ test_error_functions() ->
     ),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun (F) ->
-               [{error, missing_credentials} = erlang:apply(kinetic, F, Args)
+               [{error, missing_args} = erlang:apply(kinetic, F, Args)
                  || Args <- sample_arglists([])]
         end,
         [create_stream, delete_stream, describe_stream, get_records, get_shard_iterator,
          list_streams, merge_shards, put_record, split_shard]
     ).
+
 
 put_records_test_() ->
     {setup,
@@ -117,6 +128,7 @@ put_records_test_() ->
      fun test_teardown/1,
      fun test_put_records/0
     }.
+
 
 test_put_records() ->
     meck:expect(lhttpc, request, fun

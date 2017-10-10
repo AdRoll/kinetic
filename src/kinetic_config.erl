@@ -10,8 +10,6 @@
 
 -record(kinetic_config, {tref}).
 
--define(METADATA_BASE_URL, "http://169.254.169.254").
-
 start_link(Opts) ->
     gen_server:start_link(
       {local, ?MODULE}, ?MODULE, [Opts], []).
@@ -33,18 +31,20 @@ get_args() ->
             {ok, V}
     catch
         error:badarg ->
-            {error, missing_credentials}
+            {error, missing_args}
     end.
+
 
 update_data(Opts) ->
     Arguments = case get_args() of
-        {error, missing_credentials} ->
-            new_args(Opts);
-        {ok, Result} ->
-            update_data_subsequent(Opts, Result)
-    end,
+                    {error, missing_args} ->
+                        new_args(Opts);
+                    {ok, Result} ->
+                        Result#kinetic_arguments{date=awsv4:isonow()}
+                end,
     ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
     {ok, Arguments}.
+
 
 % gen_server behavior
 
@@ -93,41 +93,11 @@ region("ap-northeast-1" ++ _R) -> "ap-northeast-1";
 region("ap-southeast-1" ++ _R) -> "ap-southeast-1";
 region("eu-west-1" ++ _R) -> "eu-west-1".
 
-get_aws_credentials(V, P, MetaData, Role)
-        when V =:= undefined orelse P =:= undefined ->
-    {ok, AwsCredentials} = kinetic_iam:get_aws_keys(MetaData, Role),
-    AwsCredentials;
-get_aws_credentials(AccessKeyId, SecretAccessKey, _, _) when is_list(AccessKeyId), is_list(SecretAccessKey) ->
-    #aws_credentials{
-        access_key_id = AccessKeyId,
-        secret_access_key = SecretAccessKey,
-        expiration_seconds = no_expire
-    }.
-
-
-update_data_subsequent(Opts, Args=#kinetic_arguments{aws_credentials = AwsCreds}) ->
-    case AwsCreds of
-        #aws_credentials{expiration_seconds=no_expire} ->
-            Args#kinetic_arguments{date=isonow()};
-        #aws_credentials{expiration_seconds=CurrentExpirationSeconds} ->
-            SecondsToExpire = CurrentExpirationSeconds - calendar:datetime_to_gregorian_seconds(erlang:universaltime()),
-            case SecondsToExpire < ?EXPIRATION_REFRESH of
-                true ->
-                    new_args(Opts);
-                false ->
-                    Args#kinetic_arguments{date=isonow()}
-            end
-    end.
-
 
 new_args(Opts) ->
-    ConfiguredAccessKeyId = proplists:get_value(aws_access_key_id, Opts),
-    ConfiguredSecretAccessKey = proplists:get_value(aws_secret_access_key, Opts),
-    MetaData = proplists:get_value(metadata_base_url, Opts, ?METADATA_BASE_URL),
-
     Region = case proplists:get_value(region, Opts, undefined) of
                  undefined ->
-                     {ok, Zone} = kinetic_utils:fetch_and_return_url(MetaData ++ "/latest/meta-data/placement/availability-zone", text),
+                     {ok, Zone} = imds:zone(),
                      region(Zone);
                  R ->
                      R
@@ -137,20 +107,30 @@ new_args(Opts) ->
     DefaultTimeout = proplists:get_value(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
-    Role = proplists:get_value(iam_role, Opts),
+
+    %% erliam should support named profiles for using specific roles or preconfigured
+    %% long-term credentials to mint session tokens, but for now set keys in erliam app
+    %% env if set in kinetic app env; these will be used to create session tokens:
+    case {proplists:get_value(aws_access_key_id, Opts),
+          proplists:get_value(aws_secret_access_key, Opts)} of
+        {undefined, _} ->
+            ok;
+        {_, undefined} ->
+            ok;
+        {ConfiguredAccessKeyId, ConfiguredSecretAccessKey} ->
+            ok = application:set_env(erliam, aws_access_key, ConfiguredAccessKeyId),
+            ok = application:set_env(erliam, aws_secret_key, ConfiguredSecretAccessKey),
+            ok = erliam:invalidate()
+    end,
 
     #kinetic_arguments{
         region=Region,
-        date=isonow(),
+        date=awsv4:isonow(),
         host=Host,
         url=Url,
         lhttpc_opts=LHttpcOpts,
-        timeout=DefaultTimeout,
-        aws_credentials = get_aws_credentials(ConfiguredAccessKeyId,
-                                              ConfiguredSecretAccessKey,
-                                              MetaData, Role)
-    }.
-
+        timeout=DefaultTimeout
+      }.
 
 %% todo:
 %% - rewrite new_args to use this
@@ -166,8 +146,3 @@ merge_args(Args, [{region, Region}|Rest]) ->
                Rest);
 merge_args(Args, [{timeout, Timeout}|Rest]) ->
     merge_args(Args#kinetic_arguments{timeout = Timeout}, Rest).
-
-
-
-isonow() ->
-    kinetic_iso8601:format_basic(erlang:universaltime()).
