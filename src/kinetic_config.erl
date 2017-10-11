@@ -40,7 +40,8 @@ update_data(Opts) ->
                     {error, missing_args} ->
                         new_args(Opts);
                     {ok, Result} ->
-                        Result#kinetic_arguments{date=awsv4:isonow()}
+                        Result#kinetic_arguments{aws_credentials=erliam:credentials(),
+                                                 date=awsv4:isonow()}
                 end,
     ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
     {ok, Arguments}.
@@ -129,7 +130,8 @@ new_args(Opts) ->
         host=Host,
         url=Url,
         lhttpc_opts=LHttpcOpts,
-        timeout=DefaultTimeout
+        timeout=DefaultTimeout,
+        aws_credentials=erliam:credentials()
       }.
 
 %% todo:

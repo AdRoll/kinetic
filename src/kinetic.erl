@@ -251,8 +251,7 @@ execute(Operation, Payload, Opts) ->
             {error, E};
 
         {ok, Args} ->
-            #kinetic_arguments{region=Region, date=Date,
-                               host=Host, url=Url,
+            #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url, host=Host,
                                lhttpc_opts=LHttpcOpts, timeout=Timeout} = kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
@@ -263,7 +262,7 @@ execute(Operation, Payload, Opts) ->
 
                     SignedHeaders = #{"content-type" => "application/x-amz-json-1.1",
                                       "connection" => "keep-alive"},
-                    Headers = awsv4:headers(erliam:credentials(),
+                    Headers = awsv4:headers(AwsCreds,
                                             #{service => "kinesis",
                                               target_api => Target,
                                               method => "POST",

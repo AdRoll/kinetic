@@ -16,7 +16,8 @@
     host :: undefined | string(),
     url :: undefined | string(),
     lhttpc_opts = [] :: [any()],
-    timeout :: undefined | pos_integer()
+    timeout :: undefined | pos_integer(),
+    aws_credentials
 }).
 
 -record(kinetic_stream, {
