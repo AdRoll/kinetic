@@ -251,7 +251,7 @@ execute(Operation, Payload, Opts) ->
             {error, E};
 
         {ok, Args} ->
-            #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url,
+            #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url, host=Host,
                                lhttpc_opts=LHttpcOpts, timeout=Timeout} = kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
@@ -260,13 +260,17 @@ execute(Operation, Payload, Opts) ->
                 Body ->
                     Target = ["Kinesis_20131202.", Operation],
 
-                    {ok, AuthorizationHeaders} =
-                        kinetic_aws:authorization_headers_v4(AwsCreds, "kinesis", Region,
-                                                          Date, Target, Body),
-
-                    Headers = [{"Content-Type", "application/x-amz-json-1.1"},
-                               {"Connection", "keep-alive"}
-                               | AuthorizationHeaders],
+                    SignedHeaders = #{"content-type" => "application/x-amz-json-1.1",
+                                      "connection" => "keep-alive"},
+                    Headers = awsv4:headers(AwsCreds,
+                                            #{service => "kinesis",
+                                              target_api => Target,
+                                              method => "POST",
+                                              region => Region,
+                                              host => Host,
+                                              signed_headers => SignedHeaders,
+                                              aws_date => Date},
+                                            Body),
 
                     case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
                         {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->

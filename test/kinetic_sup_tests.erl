@@ -4,27 +4,15 @@
 -include_lib("eunit/include/eunit.hrl").
 
 test_setup() ->
-    meck:new(kinetic_iam),
-    meck:expect(kinetic_iam, get_aws_keys,
-        fun("error" ++ _Rest, _) ->
-                {error, something};
-           ("no_expire" ++ _Rest, _Role) ->
-                {ok, {"WHATVER", "SECRET", "2038-05-04T10:12:13Z"}};
-           ("close_expire" ++ _Rest, _Role) ->
-                Timestamp = calendar:gregorian_seconds_to_datetime(
-                    calendar:datetime_to_gregorian_seconds(calendar:universal_time()) +
-                    ?EXPIRATION_REFRESH - 1),
-                {ok, {"WHATVER", "SECRET", kinetic_iso8601:format(Timestamp)}}
-
-        end
-    ),
-    meck:new(kinetic_utils, [passthrough]),
-    meck:expect(kinetic_utils, fetch_and_return_url,
-                fun(_MetaData, text) -> {ok, "us-east-1b"} end).
+    meck:new(erliam, [passthrough]),
+    meck:expect(erliam, invalidate, 0, ok),
+    meck:expect(erliam, credentials, 0, fake_creds),
+    meck:new(imds, [passthrough]),
+    meck:expect(imds, zone, 0, {ok, "us-east-1b"}).
 
 test_teardown(_) ->
-    meck:unload(kinetic_iam),
-    meck:unload(kinetic_utils).
+    meck:unload(imds),
+    meck:unload(erliam).
 
 kinetic_sup_test_() ->
     {inorder,
@@ -41,18 +29,12 @@ kinetic_sup_test_() ->
 test_supervisor() ->
     process_flag(trap_exit, true),
     {ok, Pid} = kinetic_sup:start_link([{aws_access_key_id, "whatever"},
-                                         {aws_secret_access_key, "secret"},
-                                         {metadata_base_url, "doesn't matter"}]),
+                                        {aws_secret_access_key, "secret"}]),
     {ok, #kinetic_arguments{
-        aws_credentials=#aws_credentials{
-            access_key_id="whatever",
-            secret_access_key="secret",
-            expiration_seconds=no_expire
-        },
+        aws_credentials=fake_creds,
         region="us-east-1",
         lhttpc_opts=[]}} = kinetic_config:get_args(),
 
     kinetic_sup:stop(Pid),
     {error, _} = kinetic_config:get_args(),
     process_flag(trap_exit, false).
-
