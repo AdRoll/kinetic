@@ -51,8 +51,9 @@ update_data(Opts) ->
 
 init([Opts]) ->
     process_flag(trap_exit, true),
-    ets:new(?KINETIC_DATA, [named_table, set, public, {read_concurrency, true}]),
-    ets:new(?KINETIC_STREAM, [named_table, set, public, {read_concurrency, true}]),
+    EtsOpts = [named_table, set, public, {read_concurrency, true}],
+    ets:new(?KINETIC_DATA, EtsOpts),
+    ets:new(?KINETIC_STREAM, EtsOpts),
     {ok, _ClientArgs} = update_data(Opts),
     case timer:apply_interval(1000, ?MODULE, update_data, [Opts]) of
         {ok, TRef} ->

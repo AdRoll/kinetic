@@ -136,7 +136,8 @@ increment_partition_num(State=#kinetic_stream{current_partition_num=Number,
 increment_partition_num(State=#kinetic_stream{current_partition_num=Number}) ->
     State#kinetic_stream{current_partition_num=Number+1}.
 
-partition_key(#kinetic_stream{current_partition_num=Number, base_partition_name=BasePartitionName}) ->
+partition_key(
+    #kinetic_stream{current_partition_num=Number, base_partition_name=BasePartitionName}) ->
     BinNumber = integer_to_binary(Number),
     <<BasePartitionName/binary, "-", BinNumber/binary>>.
 
@@ -162,7 +163,8 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
                     send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries-1);
 
                 _ ->
-                    error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody]),
+                    error_logger:info_msg(
+                        "Request failed: Code: ~p~n~n~p~n~p~n", [Code, Headers, RawBody]),
                     {error, {Code, Headers, Body}}
             end
     end.

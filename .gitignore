@@ -1,8 +1,6 @@
-.eunit
-deps
+_build/
 *.o
 *.beam
 *.plt
 erl_crash.dump
 ebin
-production.config

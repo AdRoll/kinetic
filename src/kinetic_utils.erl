@@ -21,7 +21,7 @@ decode(Body) ->
         _ ->
             {error, not_a_dict}
     catch
-        {error, E} ->
+        _:E ->
             {error, E}
     end.
 
@@ -29,6 +29,6 @@ decode(Body) ->
 encode(Body) ->
     try jiffy:encode(Body)
     catch
-        {error, E} ->
+        _:E ->
             {error, E}
     end.
