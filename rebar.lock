@@ -1,0 +1,14 @@
+{"1.1.0",
+[{<<"erliam">>,
+  {git,"https://github.com/AdRoll/erliam.git",
+       {ref,"868422a11751e203b926942a745653137ce9b0f2"}},
+  0},
+ {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.1">>},0},
+ {<<"lhttpc">>,
+  {git,"https://github.com/ferd/lhttpc.git",
+       {ref,"28d5562be7e53576b624a6f82deac7303ce8f2dd"}},
+  0}]}.
+[
+{pkg_hash,[
+ {<<"jiffy">>, <<"4F25639772CA41202F41BA9C8F6CA0933554283DD4742C90651E03471C55E341">>}]}
+].

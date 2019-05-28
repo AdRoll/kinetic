@@ -1,28 +1,25 @@
 
 PREFIX:=../
-DEST:=$(PREFIX)$(PROJECT)
 
-REBAR=./rebar
+REBAR=rebar3
 
-.PHONY: all doc clean test dialyzer
+.PHONY: all edoc clean test dialyzer
 
 all:
-	@$(REBAR) get-deps compile
+	@$(REBAR) compile
 
 edoc:
-	@$(REBAR) doc
+	@$(REBAR) edoc
 
 test:
-	@rm -rf .eunit
-	@mkdir -p .eunit
-	@$(REBAR) skip_deps=true eunit
+	@$(REBAR) test
 
 clean:
 	@$(REBAR) clean
 
 dialyzer:
-	@$(REBAR) analyze
+	@$(REBAR) dialyzer || $(REBAR) dialyzer
 
 xref:
-	@$(REBAR) skip_deps=true xref
+	@$(REBAR) xref
 

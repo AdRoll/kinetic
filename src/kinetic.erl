@@ -251,8 +251,15 @@ execute(Operation, Payload, Opts) ->
             {error, E};
 
         {ok, Args} ->
-            #kinetic_arguments{aws_credentials=AwsCreds, region=Region, date=Date, url=Url, host=Host,
-                               lhttpc_opts=LHttpcOpts, timeout=Timeout} = kinetic_config:merge_args(Args, Opts),
+            #kinetic_arguments{
+                aws_credentials = AwsCreds,
+                region          = Region,
+                date            = Date,
+                url             = Url,
+                host            = Host,
+                lhttpc_opts     = LHttpcOpts,
+                timeout         = Timeout
+            } = kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
                 {error, E} ->
                     {error, E};
@@ -270,7 +277,7 @@ execute(Operation, Payload, Opts) ->
                                               host => Host,
                                               signed_headers => SignedHeaders,
                                               aws_date => Date},
-                                            Body),
+                                            iolist_to_binary(Body)),
 
                     case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
                         {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
