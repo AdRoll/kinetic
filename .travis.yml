@@ -1,10 +1,14 @@
 language: erlang
-notifications:
-  email: false
+
+os:
+  - linux
+
 otp_release:
-  - 17.0
-  - R16B03-1
-  - R16B03
-  - R16B02
-  - R16B01
-  - R16B
+   - 20.3
+   - 21.3
+
+notifications:
+  email: rtb-team+travis@adroll.com
+
+script:
+  - make test
