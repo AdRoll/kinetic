@@ -127,6 +127,7 @@ test_functionality() ->
     Payload2 = [{<<"Data">>, base64:encode(RegularData)},
                 {<<"PartitionKey">>, <<P/binary, "-2">>},
                 {<<"StreamName">>, S}],
+    receive after 100 -> ok end,
     true = meck:called(kinetic, put_record, [Payload2, Pid]),
     kinetic_stream:flush(S, {P}),
     wait_for_flush(),
