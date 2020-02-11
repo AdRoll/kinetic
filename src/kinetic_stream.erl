@@ -149,7 +149,7 @@ reset_timer(State=#kinetic_stream{flush_interval=FlushInterval, flush_tref=TRef}
 send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, 0) ->
     erlang:error(max_retries_reached, [StreamName, PartitionKey, Timeout, Buffer]);
 send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
-    case kinetic:put_record([{<<"Data">>, base64:encode(Buffer)},
+    case kinetic:put_record([{<<"Data">>, b64fast:encode64(Buffer)},
                              {<<"PartitionKey">>, PartitionKey},
                              {<<"StreamName">>, StreamName}], Timeout) of
         {ok, _} ->

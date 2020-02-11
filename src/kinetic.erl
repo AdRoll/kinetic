@@ -32,11 +32,11 @@ stop() ->
     application:stop(kinetic).
 
 
--spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
-    {ok, pid()}.
 start(Opts) when is_list(Opts) ->
     kinetic_sup:start_link(Opts).
 
+-spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
+    {ok, pid()}.
 start(_, Opts) ->
     kinetic_sup:start_link(Opts).
 
