@@ -1,12 +1,10 @@
 -module(kinetic).
--behaviour(application).
 
+-behaviour(application).
 
 -export([start/0, stop/0]).
 -export([start/2, stop/1]).
 -export([start/1]).
-
-
 -export([create_stream/1, create_stream/2]).
 -export([list_streams/1, list_streams/2]).
 -export([delete_stream/1, delete_stream/2]).
@@ -26,17 +24,14 @@
 start() ->
     application:start(kinetic).
 
-
 -spec stop() -> ok | {error, any()}.
 stop() ->
     application:stop(kinetic).
 
-
 start(Opts) when is_list(Opts) ->
     kinetic_sup:start_link(Opts).
 
--spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
-    {ok, pid()}.
+-spec start(normal | {takeover, node()} | {failover, node()}, any()) -> {ok, pid()}.
 start(_, Opts) ->
     kinetic_sup:start_link(Opts).
 
@@ -53,11 +48,11 @@ stop(_) ->
 %% Response = {ok, []}
 create_stream(Payload) ->
     create_stream(Payload, []).
+
 create_stream(Payload, Opts) when is_list(Opts) ->
     execute("CreateStream", Payload, Opts);
 create_stream(Payload, Timeout) ->
     create_stream(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}] <- required
@@ -65,11 +60,11 @@ create_stream(Payload, Timeout) ->
 %% Response = {ok, []}
 delete_stream(Payload) ->
     delete_stream(Payload, []).
+
 delete_stream(Payload, Opts) when is_list(Opts) ->
     execute("DeleteStream", Payload, Opts);
 delete_stream(Payload, Timeout) ->
     delete_stream(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -113,11 +108,11 @@ delete_stream(Payload, Timeout) ->
 %%             <<"21267647932558653966460912964485513218">>}]}}]}]}]}}]
 describe_stream(Payload) ->
     describe_stream(Payload, []).
+
 describe_stream(Payload, Opts) when is_list(Opts) ->
     execute("DescribeStream", Payload, Opts);
 describe_stream(Payload, Timeout) ->
     describe_stream(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"Limit">>, integer()}, <- optional
@@ -130,11 +125,11 @@ describe_stream(Payload, Timeout) ->
 %%                   {<<"SequenceNumber">>: <<"21269319989652663814458848515492872193">>}]}]}
 get_records(Payload) ->
     get_records(Payload, []).
+
 get_records(Payload, Opts) when is_list(Opts) ->
     execute("GetRecords", Payload, Opts);
 get_records(Payload, Timeout) ->
     get_records(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -147,11 +142,11 @@ get_records(Payload, Timeout) ->
 %% ]}
 get_shard_iterator(Payload) ->
     get_shard_iterator(Payload, []).
+
 get_shard_iterator(Payload, Opts) when is_list(Opts) ->
     execute("GetShardIterator", Payload, Opts);
 get_shard_iterator(Payload, Timeout) ->
     get_shard_iterator(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"ExclusiveStartStreamName">>, binary()}, <- optional
@@ -161,11 +156,11 @@ get_shard_iterator(Payload, Timeout) ->
 %%                  {<<"StreamNames">>, [<<"exampleStreamName">>]}]}
 list_streams(Payload) ->
     list_streams(Payload, []).
+
 list_streams(Payload, Opts) when is_list(Opts) ->
     execute("ListStreams", Payload, Opts);
 list_streams(Payload, Timeout) ->
     list_streams(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -175,11 +170,11 @@ list_streams(Payload, Timeout) ->
 %% Response = {ok, []}
 merge_shards(Payload) ->
     merge_shards(Payload, []).
+
 merge_shards(Payload, Opts) when is_list(Opts) ->
     execute("MergeShards", Payload, Opts);
 merge_shards(Payload, Timeout) ->
     merge_shards(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"Data">>, base64_binary()}, <- required
@@ -192,11 +187,11 @@ merge_shards(Payload, Timeout) ->
 %%                  {<<"ShardId">>, <<"shardId-000000000001">>}]}
 put_record(Payload) ->
     put_record(Payload, []).
+
 put_record(Payload, Opts) when is_list(Opts) ->
     execute("PutRecord", Payload, Opts);
 put_record(Payload, Timeout) ->
     put_record(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"Records">>, [
@@ -218,17 +213,17 @@ put_record(Payload, Timeout) ->
 %% In the latter case, the list contains a result for each input record, in order.
 put_records(Payload) ->
     put_records(Payload, []).
+
 put_records(Payload, Opts) when is_list(Opts) ->
     case execute("PutRecords", Payload, Opts) of
-        {error, E} ->
-            {error, E};
-        {ok, Response} ->
-            {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
-            {ok, [record_status(R) || {R} <- Records]}
+      {error, E} ->
+          {error, E};
+      {ok, Response} ->
+          {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
+          {ok, [record_status(R) || {R} <- Records]}
     end;
 put_records(Payload, Timeout) ->
     put_records(Payload, [{timeout, Timeout}]).
-
 
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
@@ -238,68 +233,62 @@ put_records(Payload, Timeout) ->
 %% Response = {ok, []}
 split_shard(Payload) ->
     split_shard(Payload, []).
+
 split_shard(Payload, Opts) when is_list(Opts) ->
     execute("SplitShard", Payload, Opts);
 split_shard(Payload, Timeout) ->
     split_shard(Payload, [{timeout, Timeout}]).
 
-
 %% Internal
 execute(Operation, Payload, Opts) ->
     case kinetic_config:get_args() of
-        {error, E} ->
-            {error, E};
+      {error, E} ->
+          {error, E};
+      {ok, Args} ->
+          #kinetic_arguments{aws_credentials = AwsCreds,
+                             region = Region,
+                             date = Date,
+                             url = Url,
+                             host = Host,
+                             lhttpc_opts = LHttpcOpts,
+                             timeout = Timeout} =
+              kinetic_config:merge_args(Args, Opts),
+          case kinetic_utils:encode({Payload}) of
+            {error, E} ->
+                {error, E};
+            Body ->
+                Target = ["Kinesis_20131202.", Operation],
 
-        {ok, Args} ->
-            #kinetic_arguments{
-                aws_credentials = AwsCreds,
-                region          = Region,
-                date            = Date,
-                url             = Url,
-                host            = Host,
-                lhttpc_opts     = LHttpcOpts,
-                timeout         = Timeout
-            } = kinetic_config:merge_args(Args, Opts),
-            case kinetic_utils:encode({Payload}) of
-                {error, E} ->
-                    {error, E};
+                SignedHeaders = #{"content-type" => "application/x-amz-json-1.1",
+                                  "connection" => "keep-alive"},
+                Headers = awsv4:headers(AwsCreds,
+                                        #{service => "kinesis",
+                                          target_api => Target,
+                                          method => "POST",
+                                          region => Region,
+                                          host => Host,
+                                          signed_headers => SignedHeaders,
+                                          aws_date => Date},
+                                        iolist_to_binary(Body)),
 
-                Body ->
-                    Target = ["Kinesis_20131202.", Operation],
-
-                    SignedHeaders = #{"content-type" => "application/x-amz-json-1.1",
-                                      "connection" => "keep-alive"},
-                    Headers = awsv4:headers(AwsCreds,
-                                            #{service => "kinesis",
-                                              target_api => Target,
-                                              method => "POST",
-                                              region => Region,
-                                              host => Host,
-                                              signed_headers => SignedHeaders,
-                                              aws_date => Date},
-                                            iolist_to_binary(Body)),
-
-                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
-                        {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
-                            {ok, kinetic_utils:decode(ResponseBody)};
-
-                        {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, {Code, ResponseHeaders, ResponseBody}};
-
-                        {error, E} ->
-                            {error, E}
-                    end
-            end
+                case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
+                  {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                      {ok, kinetic_utils:decode(ResponseBody)};
+                  {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
+                      {error, {Code, ResponseHeaders, ResponseBody}};
+                  {error, E} ->
+                      {error, E}
+                end
+          end
     end.
-
 
 record_status(Record) ->
     case lists:keymember(<<"SequenceNumber">>, 1, Record) of
-        true -> ok;
-        false -> {error, {get_value(<<"ErrorCode">>, Record),
-                          get_value(<<"ErrorMessage">>, Record)}}
+      true ->
+          ok;
+      false ->
+          {error, {get_value(<<"ErrorCode">>, Record), get_value(<<"ErrorMessage">>, Record)}}
     end.
-
 
 get_value(Key, TupleList) ->
     {Key, Value} = lists:keyfind(Key, 1, TupleList),
