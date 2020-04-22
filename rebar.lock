@@ -2,9 +2,9 @@
 [{<<"b64fast">>,{pkg,<<"b64fast">>,<<"0.2.2">>},0},
  {<<"erliam">>,
   {git,"https://github.com/AdRoll/erliam.git",
-       {ref,"868422a11751e203b926942a745653137ce9b0f2"}},
+       {ref,"7c2f4d08c7119e70047e80005e54945a286ab10c"}},
   0},
- {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.3">>},0},
+ {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.4">>},0},
  {<<"lhttpc">>,
   {git,"https://github.com/ferd/lhttpc.git",
        {ref,"28d5562be7e53576b624a6f82deac7303ce8f2dd"}},
@@ -12,5 +12,5 @@
 [
 {pkg_hash,[
  {<<"b64fast">>, <<"394A548C7C236AEC3681B55D3E32239EE007229B4C12AE3D262B9597FE623859">>},
- {<<"jiffy">>, <<"2EBE3035B3161025E7D12ABE307241F10E668CBF72E0AA0614CDE19ED70BF0A4">>}]}
+ {<<"jiffy">>, <<"72ADEFF75C52A2FF07DE738F0813768ABE7CE158026CC1115A170340259C0CAA">>}]}
 ].
