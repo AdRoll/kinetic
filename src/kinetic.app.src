@@ -15,5 +15,6 @@
                   erliam
                  ]},
   {env, [{args, []}]},
-  {mod, {kinetic,[]}}
+  {mod, {kinetic,[]}},
+  {licenses, ["BSD-3-Clause"]}
  ]}.
