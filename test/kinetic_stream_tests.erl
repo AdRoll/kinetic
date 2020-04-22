@@ -1,6 +1,7 @@
 -module(kinetic_stream_tests).
 
 -include("kinetic.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 test_setup() ->
@@ -8,38 +9,43 @@ test_setup() ->
     meck:new(supervisor, [unstick, passthrough]),
     meck:sequence(supervisor, start_child, 2, [{ok, undefined}, {ok, pid}]),
     meck:new(kinetic, [passthrough]),
-    meck:expect(kinetic, put_record,
-        fun(Payload, Pid) ->
-                case Pid of
-                    Pid when is_pid(Pid) ->
-                        Pid ! done;
-                    _ ->
-                        ok
-                end,
-                case proplists:get_value(<<"PartitionKey">>, Payload) of
-                    <<"otherstuff">> ->
-                        {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
-
-                    <<"throughput">> ->
-                        {error, {400, headers, <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
-
-                    _ ->
-                        {ok, done}
-                end
-        end),
+    meck:expect(kinetic,
+                put_record,
+                fun (Payload, Pid) ->
+                        case Pid of
+                          Pid when is_pid(Pid) ->
+                              Pid ! done;
+                          _ ->
+                              ok
+                        end,
+                        case proplists:get_value(<<"PartitionKey">>, Payload) of
+                          <<"otherstuff">> ->
+                              {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
+                          <<"throughput">> ->
+                              {error,
+                               {400,
+                                headers,
+                                <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
+                          _ ->
+                              {ok, done}
+                        end
+                end),
     meck:new(timer, [unstick, passthrough]),
-    meck:expect(timer, send_after, fun
-            (1000, _pid, flush) ->
-                {ok, tref}
-        end),
-    meck:expect(timer, sleep, fun
-            (1000) ->
-                ok
-        end),
-    meck:expect(timer, cancel, fun
-            (tref) ->
-                ok
-        end).
+    meck:expect(timer,
+                send_after,
+                fun (1000, _pid, flush) ->
+                        {ok, tref}
+                end),
+    meck:expect(timer,
+                sleep,
+                fun (1000) ->
+                        ok
+                end),
+    meck:expect(timer,
+                cancel,
+                fun (tref) ->
+                        ok
+                end).
 
 test_teardown(_) ->
     ets:delete(?KINETIC_STREAM),
@@ -49,18 +55,13 @@ test_teardown(_) ->
 
 kinetic_stream_test_() ->
     {inorder,
-        {foreach,
-            fun test_setup/0,
-            fun test_teardown/1,
-            [
-                ?_test(test_get_stream()),
-                ?_test(test_start_and_stop()),
-                ?_test(test_functionality()),
-                ?_test(test_retries())
-            ]
-        }
-    }.
-
+     {foreach,
+      fun test_setup/0,
+      fun test_teardown/1,
+      [?_test(test_get_stream()),
+       ?_test(test_start_and_stop()),
+       ?_test(test_functionality()),
+       ?_test(test_retries())]}}.
 
 %%
 %% Tests
@@ -72,20 +73,19 @@ test_get_stream() ->
     Pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}),
     ets:delete(?KINETIC_STREAM, <<"mystream">>),
 
-    ChildPid = spawn(fun() -> Pid ! done end),
+    ChildPid = spawn(fun () ->
+                             Pid ! done
+                     end),
     ok = receive
-        done ->
-            ok;
-        _ ->
-            bad
-         after
-            1000 ->
-              bad
-    end,
+           done ->
+               ok;
+           _ ->
+               bad
+           after 1000 ->
+                     bad
+         end,
     ets:insert_new(?KINETIC_STREAM, {<<"mystream">>, ChildPid}),
     pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}).
-
-
 
 test_start_and_stop() ->
     {ok, Pid} = kinetic_stream:start_link(<<"mystream">>, {<<"whatever">>}),
@@ -99,9 +99,9 @@ test_start_and_stop() ->
 
 test_functionality() ->
     Pid = self(),
-    BigData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE+1)),
+    BigData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE + 1)),
     SmallData = <<"data">>,
-    RegularData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE-1)),
+    RegularData = list_to_binary(string:chars($a, ?KINESIS_MAX_PUT_SIZE - 1)),
     S = <<"mystream">>,
     P = <<"whatever">>,
     % This is a total hack to use the Pid as the Timeout and have it passed around
@@ -127,7 +127,10 @@ test_functionality() ->
     Payload2 = [{<<"Data">>, b64fast:encode64(RegularData)},
                 {<<"PartitionKey">>, <<P/binary, "-2">>},
                 {<<"StreamName">>, S}],
-    receive after 100 -> ok end,
+    receive
+      after 100 ->
+                ok
+    end,
     true = meck:called(kinetic, put_record, [Payload2, Pid]),
     kinetic_stream:flush(S, {P}),
     wait_for_flush(),
@@ -147,22 +150,21 @@ test_retries() ->
     {error, {_, _, _}} = kinetic_stream:send_to_kinesis(S, SmallData, P, 5000, 3),
     1 = meck:num_calls(kinetic, put_record, [Payload0, 5000]),
     ok = try kinetic_stream:send_to_kinesis(S, SmallData, <<"throughput">>, 5000, 3) of
-        _ ->
-            bad
-    catch
-        error:max_retries_reached ->
-            ok
-    end,
+           _ ->
+               bad
+         catch
+           error:max_retries_reached ->
+               ok
+         end,
     true = meck:called(timer, sleep, [1000]),
     ok.
 
 wait_for_flush() ->
     ok = receive
-        done ->
-            ok;
-        _ ->
-            bad
-    after
-        1000 ->
-            bad
-    end.
+           done ->
+               ok;
+           _ ->
+               bad
+           after 1000 ->
+                     bad
+         end.

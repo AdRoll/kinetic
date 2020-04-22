@@ -13,6 +13,9 @@ start_link() ->
 init(_) ->
     KineticStream = {kinetic_stream,
                      {kinetic_stream, start_link, []},
-                     transient, 10000, worker, [kinetic_stream]},
+                     transient,
+                     10000,
+                     worker,
+                     [kinetic_stream]},
 
     {ok, {{simple_one_for_one, 10, 1}, [KineticStream]}}.
