@@ -216,11 +216,11 @@ put_records(Payload) ->
 
 put_records(Payload, Opts) when is_list(Opts) ->
     case execute("PutRecords", Payload, Opts) of
-      {error, E} ->
-          {error, E};
-      {ok, Response} ->
-          {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
-          {ok, [record_status(R) || {R} <- Records]}
+        {error, E} ->
+            {error, E};
+        {ok, Response} ->
+            {<<"Records">>, Records} = lists:keyfind(<<"Records">>, 1, Response),
+            {ok, [record_status(R) || {R} <- Records]}
     end;
 put_records(Payload, Timeout) ->
     put_records(Payload, [{timeout, Timeout}]).
@@ -242,52 +242,54 @@ split_shard(Payload, Timeout) ->
 %% Internal
 execute(Operation, Payload, Opts) ->
     case kinetic_config:get_args() of
-      {error, E} ->
-          {error, E};
-      {ok, Args} ->
-          #kinetic_arguments{aws_credentials = AwsCreds,
-                             region = Region,
-                             date = Date,
-                             url = Url,
-                             host = Host,
-                             lhttpc_opts = LHttpcOpts,
-                             timeout = Timeout} =
-              kinetic_config:merge_args(Args, Opts),
-          case kinetic_utils:encode({Payload}) of
-            {error, E} ->
-                {error, E};
-            Body ->
-                Target = ["Kinesis_20131202.", Operation],
+        {error, E} ->
+            {error, E};
+        {ok, Args} ->
+            #kinetic_arguments{aws_credentials = AwsCreds,
+                               region = Region,
+                               date = Date,
+                               url = Url,
+                               host = Host,
+                               lhttpc_opts = LHttpcOpts,
+                               timeout = Timeout} =
+                kinetic_config:merge_args(Args, Opts),
+            case kinetic_utils:encode({Payload}) of
+                {error, E} ->
+                    {error, E};
+                Body ->
+                    Target = ["Kinesis_20131202.", Operation],
 
-                SignedHeaders = #{"content-type" => "application/x-amz-json-1.1",
-                                  "connection" => "keep-alive"},
-                Headers = awsv4:headers(AwsCreds,
-                                        #{service => "kinesis",
-                                          target_api => Target,
-                                          method => "POST",
-                                          region => Region,
-                                          host => Host,
-                                          signed_headers => SignedHeaders,
-                                          aws_date => Date},
-                                        iolist_to_binary(Body)),
+                    SignedHeaders =
+                        #{"content-type" => "application/x-amz-json-1.1",
+                          "connection" => "keep-alive"},
+                    Headers =
+                        awsv4:headers(AwsCreds,
+                                      #{service => "kinesis",
+                                        target_api => Target,
+                                        method => "POST",
+                                        region => Region,
+                                        host => Host,
+                                        signed_headers => SignedHeaders,
+                                        aws_date => Date},
+                                      iolist_to_binary(Body)),
 
-                case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
-                  {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
-                      {ok, kinetic_utils:decode(ResponseBody)};
-                  {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                      {error, {Code, ResponseHeaders, ResponseBody}};
-                  {error, E} ->
-                      {error, E}
-                end
-          end
+                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
+                        {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                            {ok, kinetic_utils:decode(ResponseBody)};
+                        {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
+                            {error, {Code, ResponseHeaders, ResponseBody}};
+                        {error, E} ->
+                            {error, E}
+                    end
+            end
     end.
 
 record_status(Record) ->
     case lists:keymember(<<"SequenceNumber">>, 1, Record) of
-      true ->
-          ok;
-      false ->
-          {error, {get_value(<<"ErrorCode">>, Record), get_value(<<"ErrorMessage">>, Record)}}
+        true ->
+            ok;
+        false ->
+            {error, {get_value(<<"ErrorCode">>, Record), get_value(<<"ErrorMessage">>, Record)}}
     end.
 
 get_value(Key, TupleList) ->

@@ -19,19 +19,19 @@ decode(<<"">>) ->
     [];
 decode(Body) ->
     try jiffy:decode(Body) of
-      {Decoded} -> % enforces the dictionary
-          Decoded;
-      _ ->
-          {error, not_a_dict}
+        {Decoded} -> % enforces the dictionary
+            Decoded;
+        _ ->
+            {error, not_a_dict}
     catch
-      _:E ->
-          {error, E}
+        _:E ->
+            {error, E}
     end.
 
 encode(Body) ->
     try
-      jiffy:encode(Body)
+        jiffy:encode(Body)
     catch
-      _:E ->
-          {error, E}
+        _:E ->
+            {error, E}
     end.

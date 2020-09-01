@@ -36,9 +36,10 @@ test_setup() ->
     test_arg_setup(Opts).
 
 test_error_setup() ->
-    Opts = [{aws_access_key_id, "whatever"},
-            {aws_secret_access_key, "secret"},
-            {lhttpc_opts, error}],
+    Opts =
+        [{aws_access_key_id, "whatever"},
+         {aws_secret_access_key, "secret"},
+         {lhttpc_opts, error}],
     test_arg_setup(Opts).
 
 test_teardown(_) ->
@@ -93,9 +94,10 @@ test_normal_functions() ->
                    split_shard]).
 
 test_error_functions() ->
-    {ok, _args} = kinetic_config:update_data([{aws_access_key_id, "whatever"},
-                                              {aws_secret_access_key, "secret"},
-                                              {lhttpc_opts, error}]),
+    {ok, _args} =
+        kinetic_config:update_data([{aws_access_key_id, "whatever"},
+                                    {aws_secret_access_key, "secret"},
+                                    {lhttpc_opts, error}]),
     lists:foreach(fun (F) ->
                           [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
                            || Args <- sample_arglists([])]

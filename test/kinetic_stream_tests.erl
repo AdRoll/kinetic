@@ -13,21 +13,21 @@ test_setup() ->
                 put_record,
                 fun (Payload, Pid) ->
                         case Pid of
-                          Pid when is_pid(Pid) ->
-                              Pid ! done;
-                          _ ->
-                              ok
+                            Pid when is_pid(Pid) ->
+                                Pid ! done;
+                            _ ->
+                                ok
                         end,
                         case proplists:get_value(<<"PartitionKey">>, Payload) of
-                          <<"otherstuff">> ->
-                              {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
-                          <<"throughput">> ->
-                              {error,
-                               {400,
-                                headers,
-                                <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
-                          _ ->
-                              {ok, done}
+                            <<"otherstuff">> ->
+                                {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
+                            <<"throughput">> ->
+                                {error,
+                                 {400,
+                                  headers,
+                                  <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
+                            _ ->
+                                {ok, done}
                         end
                 end),
     meck:new(timer, [unstick, passthrough]),
@@ -73,17 +73,19 @@ test_get_stream() ->
     Pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}),
     ets:delete(?KINETIC_STREAM, <<"mystream">>),
 
-    ChildPid = spawn(fun () ->
-                             Pid ! done
-                     end),
-    ok = receive
-           done ->
-               ok;
-           _ ->
-               bad
-           after 1000 ->
-                     bad
-         end,
+    ChildPid =
+        spawn(fun () ->
+                      Pid ! done
+              end),
+    ok =
+        receive
+            done ->
+                ok;
+            _ ->
+                bad
+            after 1000 ->
+                      bad
+        end,
     ets:insert_new(?KINETIC_STREAM, {<<"mystream">>, ChildPid}),
     pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}).
 
@@ -109,14 +111,16 @@ test_functionality() ->
     {error, max_size_exceeded} = kinetic_stream:put_record(S, {P}, BigData),
     ok = kinetic_stream:put_record(S, {P}, SmallData),
     kinetic_stream:flush(S, {P}),
-    Payload0 = [{<<"Data">>, b64fast:encode64(SmallData)},
-                {<<"PartitionKey">>, <<P/binary, "-0">>},
-                {<<"StreamName">>, S}],
+    Payload0 =
+        [{<<"Data">>, b64fast:encode64(SmallData)},
+         {<<"PartitionKey">>, <<P/binary, "-0">>},
+         {<<"StreamName">>, S}],
     wait_for_flush(),
     true = meck:called(kinetic, put_record, [Payload0, Pid]),
-    Payload1 = [{<<"Data">>, b64fast:encode64(<<SmallData/binary, SmallData/binary>>)},
-                {<<"PartitionKey">>, <<P/binary, "-1">>},
-                {<<"StreamName">>, S}],
+    Payload1 =
+        [{<<"Data">>, b64fast:encode64(<<SmallData/binary, SmallData/binary>>)},
+         {<<"PartitionKey">>, <<P/binary, "-1">>},
+         {<<"StreamName">>, S}],
     ok = kinetic_stream:put_record(S, {P}, SmallData),
     ok = kinetic_stream:put_record(S, {P}, SmallData),
     kinetic_stream:flush(S, {P}),
@@ -124,19 +128,21 @@ test_functionality() ->
     true = meck:called(kinetic, put_record, [Payload1, Pid]),
     ok = kinetic_stream:put_record(S, {P}, RegularData),
     ok = kinetic_stream:put_record(S, {P}, SmallData),
-    Payload2 = [{<<"Data">>, b64fast:encode64(RegularData)},
-                {<<"PartitionKey">>, <<P/binary, "-2">>},
-                {<<"StreamName">>, S}],
+    Payload2 =
+        [{<<"Data">>, b64fast:encode64(RegularData)},
+         {<<"PartitionKey">>, <<P/binary, "-2">>},
+         {<<"StreamName">>, S}],
     receive
-      after 100 ->
-                ok
+        after 100 ->
+                  ok
     end,
     true = meck:called(kinetic, put_record, [Payload2, Pid]),
     kinetic_stream:flush(S, {P}),
     wait_for_flush(),
-    Payload3 = [{<<"Data">>, b64fast:encode64(SmallData)},
-                {<<"PartitionKey">>, <<P/binary, "-0">>},
-                {<<"StreamName">>, S}],
+    Payload3 =
+        [{<<"Data">>, b64fast:encode64(SmallData)},
+         {<<"PartitionKey">>, <<P/binary, "-0">>},
+         {<<"StreamName">>, S}],
     true = meck:called(kinetic, put_record, [Payload3, Pid]),
     ok.
 
@@ -144,27 +150,30 @@ test_retries() ->
     SmallData = <<"data">>,
     S = <<"mystream">>,
     P = <<"otherstuff">>,
-    Payload0 = [{<<"Data">>, b64fast:encode64(SmallData)},
-                {<<"PartitionKey">>, P},
-                {<<"StreamName">>, S}],
+    Payload0 =
+        [{<<"Data">>, b64fast:encode64(SmallData)},
+         {<<"PartitionKey">>, P},
+         {<<"StreamName">>, S}],
     {error, {_, _, _}} = kinetic_stream:send_to_kinesis(S, SmallData, P, 5000, 3),
     1 = meck:num_calls(kinetic, put_record, [Payload0, 5000]),
-    ok = try kinetic_stream:send_to_kinesis(S, SmallData, <<"throughput">>, 5000, 3) of
-           _ ->
-               bad
-         catch
-           error:max_retries_reached ->
-               ok
-         end,
+    ok =
+        try kinetic_stream:send_to_kinesis(S, SmallData, <<"throughput">>, 5000, 3) of
+            _ ->
+                bad
+        catch
+            error:max_retries_reached ->
+                ok
+        end,
     true = meck:called(timer, sleep, [1000]),
     ok.
 
 wait_for_flush() ->
-    ok = receive
-           done ->
-               ok;
-           _ ->
-               bad
-           after 1000 ->
-                     bad
-         end.
+    ok =
+        receive
+            done ->
+                ok;
+            _ ->
+                bad
+            after 1000 ->
+                      bad
+        end.
