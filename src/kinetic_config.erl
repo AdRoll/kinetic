@@ -2,11 +2,7 @@
 
 -behaviour(gen_server).
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         terminate/2,
-         code_change/3,
+-export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 -export([start_link/1, update_data/1, stop/0, g/1, get_args/0, merge_args/2]).
 
@@ -22,29 +18,30 @@ stop() ->
 
 g(Name) ->
     case application:get_env(kinetic, Name) of
-      {ok, Value} ->
-          Value;
-      _ ->
-          undefined
+        {ok, Value} ->
+            Value;
+        _ ->
+            undefined
     end.
 
 get_args() ->
     try ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2) of
-      V ->
-          {ok, V}
+        V ->
+            {ok, V}
     catch
-      error:badarg ->
-          {error, missing_args}
+        error:badarg ->
+            {error, missing_args}
     end.
 
 update_data(Opts) ->
-    Arguments = case get_args() of
-                  {error, missing_args} ->
-                      new_args(Opts);
-                  {ok, Result} ->
-                      Result#kinetic_arguments{aws_credentials = erliam:credentials(),
-                                               date = awsv4:isonow()}
-                end,
+    Arguments =
+        case get_args() of
+            {error, missing_args} ->
+                new_args(Opts);
+            {ok, Result} ->
+                Result#kinetic_arguments{aws_credentials = erliam:credentials(),
+                                         date = awsv4:isonow()}
+        end,
     ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
     {ok, Arguments}.
 
@@ -57,10 +54,10 @@ init([Opts]) ->
     ets:new(?KINETIC_STREAM, EtsOpts),
     {ok, _ClientArgs} = update_data(Opts),
     case timer:apply_interval(1000, ?MODULE, update_data, [Opts]) of
-      {ok, TRef} ->
-          {ok, #kinetic_config{tref = TRef}};
-      Error ->
-          {stop, Error}
+        {ok, TRef} ->
+            {ok, #kinetic_config{tref = TRef}};
+        Error ->
+            {stop, Error}
     end.
 
 handle_call(stop, _From, State) ->
@@ -103,13 +100,14 @@ region("eu-west-1" ++ _R) ->
     "eu-west-1".
 
 new_args(Opts) ->
-    Region = case proplists:get_value(region, Opts, undefined) of
-               undefined ->
-                   {ok, Zone} = imds:zone(),
-                   region(Zone);
-               R ->
-                   R
-             end,
+    Region =
+        case proplists:get_value(region, Opts, undefined) of
+            undefined ->
+                {ok, Zone} = imds:zone(),
+                region(Zone);
+            R ->
+                R
+        end,
 
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
     DefaultTimeout = proplists:get_value(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
@@ -122,14 +120,14 @@ new_args(Opts) ->
     case {proplists:get_value(aws_access_key_id, Opts),
           proplists:get_value(aws_secret_access_key, Opts)}
         of
-      {undefined, _} ->
-          ok;
-      {_, undefined} ->
-          ok;
-      {ConfiguredAccessKeyId, ConfiguredSecretAccessKey} ->
-          ok = application:set_env(erliam, aws_access_key, ConfiguredAccessKeyId),
-          ok = application:set_env(erliam, aws_secret_key, ConfiguredSecretAccessKey),
-          ok = erliam:invalidate()
+        {undefined, _} ->
+            ok;
+        {_, undefined} ->
+            ok;
+        {ConfiguredAccessKeyId, ConfiguredSecretAccessKey} ->
+            ok = application:set_env(erliam, aws_access_key, ConfiguredAccessKeyId),
+            ok = application:set_env(erliam, aws_secret_key, ConfiguredSecretAccessKey),
+            ok = erliam:invalidate()
     end,
 
     #kinetic_arguments{region = Region,

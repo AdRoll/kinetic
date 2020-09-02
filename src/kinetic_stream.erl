@@ -2,11 +2,7 @@
 
 -behaviour(gen_server).
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         terminate/2,
-         code_change/3,
+-export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
          handle_info/2]).
 -export([stop/2, start_link/2, put_record/3]).
 -export([flush/2]).
@@ -30,11 +26,11 @@ stop(StreamName, Config) ->
 put_record(StreamName, Config, Data) ->
     DataSize = erlang:size(Data),
     case DataSize > ?KINESIS_MAX_PUT_SIZE of
-      true ->
-          {error, max_size_exceeded};
-      false ->
-          Stream = get_stream(StreamName, Config),
-          gen_server:call(Stream, {put_record, Data, DataSize}, infinity)
+        true ->
+            {error, max_size_exceeded};
+        false ->
+            Stream = get_stream(StreamName, Config),
+            gen_server:call(Stream, {put_record, Data, DataSize}, infinity)
     end.
 
 flush(StreamName, Config) ->
@@ -54,21 +50,21 @@ init([StreamName,
       {BasePartitionName, PartitionsNumber, Retries, Timeout, FlushInterval}]) ->
     process_flag(trap_exit, true),
     case ets:insert_new(?KINETIC_STREAM, {StreamName, self()}) of
-      true ->
-          {ok, TRef} = timer:send_after(FlushInterval, self(), flush),
-          {ok,
-           #kinetic_stream{stream_name = StreamName,
-                           base_partition_name = BasePartitionName,
-                           partitions_number = PartitionsNumber,
-                           timeout = Timeout,
-                           buffer = <<"">>,
-                           buffer_size = 0,
-                           current_partition_num = 0,
-                           flush_interval = FlushInterval,
-                           flush_tref = TRef,
-                           retries = Retries}};
-      false ->
-          ignore
+        true ->
+            {ok, TRef} = timer:send_after(FlushInterval, self(), flush),
+            {ok,
+             #kinetic_stream{stream_name = StreamName,
+                             base_partition_name = BasePartitionName,
+                             partitions_number = PartitionsNumber,
+                             timeout = Timeout,
+                             buffer = <<"">>,
+                             buffer_size = 0,
+                             current_partition_num = 0,
+                             flush_interval = FlushInterval,
+                             flush_tref = TRef,
+                             retries = Retries}};
+        false ->
+            ignore
     end.
 
 % buffer + Data is bigger than (or equal to) ?KINESIS_MAX_PUT_SIZE
@@ -114,37 +110,39 @@ handle_info(_Info, State) ->
 % Internal implementation
 get_stream(StreamName, Config) ->
     case ets:lookup(?KINETIC_STREAM, StreamName) of
-      [] ->
-          case supervisor:start_child(kinetic_stream_sup, [StreamName, Config]) of
-            {ok, undefined} ->
-                get_stream(StreamName, Config);
-            {ok, Pid} ->
-                Pid
-          end;
-      [{_Name, Pid}] ->
-          case is_process_alive(Pid) of
-            true ->
-                Pid;
-            false ->
-                ets:delete(?KINETIC_STREAM, StreamName),
-                get_stream(StreamName, Config)
-          end
+        [] ->
+            case supervisor:start_child(kinetic_stream_sup, [StreamName, Config]) of
+                {ok, undefined} ->
+                    get_stream(StreamName, Config);
+                {ok, Pid} ->
+                    Pid
+            end;
+        [{_Name, Pid}] ->
+            case is_process_alive(Pid) of
+                true ->
+                    Pid;
+                false ->
+                    ets:delete(?KINETIC_STREAM, StreamName),
+                    get_stream(StreamName, Config)
+            end
     end.
 
 internal_flush(State = #kinetic_stream{buffer = <<"">>}) ->
     State;
-internal_flush(State = #kinetic_stream{stream_name = StreamName,
-                                       buffer = Buffer,
-                                       timeout = Timeout,
-                                       retries = Retries}) ->
+internal_flush(State =
+                   #kinetic_stream{stream_name = StreamName,
+                                   buffer = Buffer,
+                                   timeout = Timeout,
+                                   retries = Retries}) ->
     PartitionKey = partition_key(State),
     spawn_link(fun () ->
                        send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries + 1)
                end),
     increment_partition_num(State#kinetic_stream{buffer = <<"">>, buffer_size = 0}).
 
-increment_partition_num(State = #kinetic_stream{current_partition_num = Number,
-                                                partitions_number = Number}) ->
+increment_partition_num(State =
+                            #kinetic_stream{current_partition_num = Number,
+                                            partitions_number = Number}) ->
     State#kinetic_stream{current_partition_num = 0};
 increment_partition_num(State = #kinetic_stream{current_partition_num = Number}) ->
     State#kinetic_stream{current_partition_num = Number + 1}.
@@ -167,17 +165,17 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
                              {<<"StreamName">>, StreamName}],
                             Timeout)
         of
-      {ok, _} ->
-          {ok, done};
-      {error, {Code, Headers, RawBody}} ->
-          Body = kinetic_utils:decode(RawBody),
-          case proplists:get_value(<<"__type">>, Body) of
-            <<"ProvisionedThroughputExceededException">> ->
-                timer:sleep(1000), % not really exponential
-                send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries - 1);
-            _ ->
-                error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n",
-                                      [Code, Headers, RawBody]),
-                {error, {Code, Headers, Body}}
-          end
+        {ok, _} ->
+            {ok, done};
+        {error, {Code, Headers, RawBody}} ->
+            Body = kinetic_utils:decode(RawBody),
+            case proplists:get_value(<<"__type">>, Body) of
+                <<"ProvisionedThroughputExceededException">> ->
+                    timer:sleep(1000), % not really exponential
+                    send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries - 1);
+                _ ->
+                    error_logger:info_msg("Request failed: Code: ~p~n~n~p~n~p~n",
+                                          [Code, Headers, RawBody]),
+                    {error, {Code, Headers, Body}}
+            end
     end.

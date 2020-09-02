@@ -20,8 +20,9 @@ kinetic_sup_test_() ->
 
 test_supervisor() ->
     process_flag(trap_exit, true),
-    {ok, Pid} = kinetic_sup:start_link([{aws_access_key_id, "whatever"},
-                                        {aws_secret_access_key, "secret"}]),
+    {ok, Pid} =
+        kinetic_sup:start_link([{aws_access_key_id, "whatever"},
+                                {aws_secret_access_key, "secret"}]),
     {ok,
      #kinetic_arguments{aws_credentials = fake_creds,
                         region = "us-east-1",
