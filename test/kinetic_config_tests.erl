@@ -13,13 +13,11 @@ test_setup() ->
     meck:new(timer, [unstick, passthrough]),
     meck:expect(timer,
                 apply_interval,
-                fun (Interval, M, F, [Opts]) ->
-                        case proplists:get_value(should_err, Opts) of
-                            true ->
-                                {error, broken};
-                            _ ->
-                                meck:passthrough([Interval, M, F, [Opts]])
-                        end
+                fun(Interval, M, F, [Opts]) ->
+                   case proplists:get_value(should_err, Opts) of
+                       true -> {error, broken};
+                       _ -> meck:passthrough([Interval, M, F, [Opts]])
+                   end
                 end).
 
 test_teardown(_) ->

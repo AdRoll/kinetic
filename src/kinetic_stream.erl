@@ -135,8 +135,8 @@ internal_flush(State =
                                    timeout = Timeout,
                                    retries = Retries}) ->
     PartitionKey = partition_key(State),
-    spawn_link(fun () ->
-                       send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries + 1)
+    spawn_link(fun() ->
+                  send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries + 1)
                end),
     increment_partition_num(State#kinetic_stream{buffer = <<"">>, buffer_size = 0}).
 
@@ -164,7 +164,7 @@ send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries) ->
                              {<<"PartitionKey">>, PartitionKey},
                              {<<"StreamName">>, StreamName}],
                             Timeout)
-        of
+    of
         {ok, _} ->
             {ok, done};
         {error, {Code, Headers, RawBody}} ->

@@ -66,9 +66,9 @@ sample_arglists(Payload) ->
      [Payload, [{region, "us-east-1"}, {timeout, 12345}]]].
 
 test_normal_functions() ->
-    lists:foreach(fun (F) ->
-                          [{ok, [{<<"hello">>, <<"world">>}]} = erlang:apply(kinetic, F, Args)
-                           || Args <- sample_arglists([])]
+    lists:foreach(fun(F) ->
+                     [{ok, [{<<"hello">>, <<"world">>}]} = erlang:apply(kinetic, F, Args)
+                      || Args <- sample_arglists([])]
                   end,
                   [create_stream,
                    delete_stream,
@@ -80,9 +80,7 @@ test_normal_functions() ->
                    put_record,
                    split_shard]),
 
-    lists:foreach(fun (F) ->
-                          {error, _} = erlang:apply(kinetic, F, [{whatever}])
-                  end,
+    lists:foreach(fun(F) -> {error, _} = erlang:apply(kinetic, F, [{whatever}]) end,
                   [create_stream,
                    delete_stream,
                    describe_stream,
@@ -98,9 +96,9 @@ test_error_functions() ->
         kinetic_config:update_data([{aws_access_key_id, "whatever"},
                                     {aws_secret_access_key, "secret"},
                                     {lhttpc_opts, error}]),
-    lists:foreach(fun (F) ->
-                          [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
-                           || Args <- sample_arglists([])]
+    lists:foreach(fun(F) ->
+                     [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
+                      || Args <- sample_arglists([])]
                   end,
                   [create_stream,
                    delete_stream,
@@ -112,9 +110,9 @@ test_error_functions() ->
                    put_record,
                    split_shard]),
     ets:delete_all_objects(?KINETIC_DATA),
-    lists:foreach(fun (F) ->
-                          [{error, missing_args} = erlang:apply(kinetic, F, Args)
-                           || Args <- sample_arglists([])]
+    lists:foreach(fun(F) ->
+                     [{error, missing_args} = erlang:apply(kinetic, F, Args)
+                      || Args <- sample_arglists([])]
                   end,
                   [create_stream,
                    delete_stream,
