@@ -119,7 +119,7 @@ new_args(Opts) ->
     %% env if set in kinetic app env; these will be used to create session tokens:
     case {proplists:get_value(aws_access_key_id, Opts),
           proplists:get_value(aws_secret_access_key, Opts)}
-        of
+    of
         {undefined, _} ->
             ok;
         {_, undefined} ->

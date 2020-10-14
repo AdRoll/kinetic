@@ -23,8 +23,8 @@ test_endpoint() ->
     Service = "kinesis",
     Regions =
         ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", "ap-northeast-1", "ap-southeast-1"],
-    lists:foreach(fun (Region) ->
-                          Url = Service ++ "." ++ Region ++ ".amazonaws.com",
-                          Url = kinetic_utils:endpoint(Service, Region)
+    lists:foreach(fun(Region) ->
+                     Url = Service ++ "." ++ Region ++ ".amazonaws.com",
+                     Url = kinetic_utils:endpoint(Service, Region)
                   end,
                   Regions).

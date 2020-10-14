@@ -11,41 +11,26 @@ test_setup() ->
     meck:new(kinetic, [passthrough]),
     meck:expect(kinetic,
                 put_record,
-                fun (Payload, Pid) ->
-                        case Pid of
-                            Pid when is_pid(Pid) ->
-                                Pid ! done;
-                            _ ->
-                                ok
-                        end,
-                        case proplists:get_value(<<"PartitionKey">>, Payload) of
-                            <<"otherstuff">> ->
-                                {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
-                            <<"throughput">> ->
-                                {error,
-                                 {400,
-                                  headers,
-                                  <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
-                            _ ->
-                                {ok, done}
-                        end
+                fun(Payload, Pid) ->
+                   case Pid of
+                       Pid when is_pid(Pid) -> Pid ! done;
+                       _ -> ok
+                   end,
+                   case proplists:get_value(<<"PartitionKey">>, Payload) of
+                       <<"otherstuff">> ->
+                           {error, {400, headers, <<"{\"__type\": \"OtherStuff\"}">>}};
+                       <<"throughput">> ->
+                           {error,
+                            {400,
+                             headers,
+                             <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
+                       _ -> {ok, done}
+                   end
                 end),
     meck:new(timer, [unstick, passthrough]),
-    meck:expect(timer,
-                send_after,
-                fun (1000, _pid, flush) ->
-                        {ok, tref}
-                end),
-    meck:expect(timer,
-                sleep,
-                fun (1000) ->
-                        ok
-                end),
-    meck:expect(timer,
-                cancel,
-                fun (tref) ->
-                        ok
-                end).
+    meck:expect(timer, send_after, fun(1000, _pid, flush) -> {ok, tref} end),
+    meck:expect(timer, sleep, fun(1000) -> ok end),
+    meck:expect(timer, cancel, fun(tref) -> ok end).
 
 test_teardown(_) ->
     ets:delete(?KINETIC_STREAM),
@@ -73,10 +58,7 @@ test_get_stream() ->
     Pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}),
     ets:delete(?KINETIC_STREAM, <<"mystream">>),
 
-    ChildPid =
-        spawn(fun () ->
-                      Pid ! done
-              end),
+    ChildPid = spawn(fun() -> Pid ! done end),
     ok =
         receive
             done ->
@@ -84,7 +66,7 @@ test_get_stream() ->
             _ ->
                 bad
             after 1000 ->
-                      bad
+                bad
         end,
     ets:insert_new(?KINETIC_STREAM, {<<"mystream">>, ChildPid}),
     pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}).
@@ -134,7 +116,7 @@ test_functionality() ->
          {<<"StreamName">>, S}],
     receive
         after 100 ->
-                  ok
+            ok
     end,
     true = meck:called(kinetic, put_record, [Payload2, Pid]),
     kinetic_stream:flush(S, {P}),
@@ -175,5 +157,5 @@ wait_for_flush() ->
             _ ->
                 bad
             after 1000 ->
-                      bad
+                bad
         end.
