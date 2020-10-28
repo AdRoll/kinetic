@@ -65,8 +65,8 @@ test_get_stream() ->
                 ok;
             _ ->
                 bad
-            after 1000 ->
-                bad
+        after 1000 ->
+            bad
         end,
     ets:insert_new(?KINETIC_STREAM, {<<"mystream">>, ChildPid}),
     pid = kinetic_stream:get_stream(<<"mystream">>, {<<"whatever">>}).
@@ -114,9 +114,8 @@ test_functionality() ->
         [{<<"Data">>, b64fast:encode64(RegularData)},
          {<<"PartitionKey">>, <<P/binary, "-2">>},
          {<<"StreamName">>, S}],
-    receive
-        after 100 ->
-            ok
+    receive after 100 ->
+        ok
     end,
     true = meck:called(kinetic, put_record, [Payload2, Pid]),
     kinetic_stream:flush(S, {P}),
@@ -156,6 +155,6 @@ wait_for_flush() ->
                 ok;
             _ ->
                 bad
-            after 1000 ->
-                bad
+        after 1000 ->
+            bad
         end.
