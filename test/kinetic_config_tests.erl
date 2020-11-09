@@ -39,7 +39,9 @@ merge_args_test_() ->
                      #kinetic_arguments{region = "region1",
                                         host = Host1 = "host1",
                                         url = Url1 = "url1"},
-                 #kinetic_arguments{region = Region2, host = Host2, url = Url2} =
+                 #kinetic_arguments{region = Region2,
+                                    host = Host2,
+                                    url = Url2} =
                      kinetic_config:merge_args(Args1, [{region, "us-east-1"}]),
                  ?assertEqual("us-east-1", Region2),
                  ?assertNotEqual(Host1, Host2),

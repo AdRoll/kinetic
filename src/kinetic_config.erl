@@ -146,6 +146,9 @@ merge_args(Args, []) ->
 merge_args(Args, [{region, Region} | Rest]) ->
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
-    merge_args(Args#kinetic_arguments{region = Region, host = Host, url = Url}, Rest);
+    merge_args(Args#kinetic_arguments{region = Region,
+                                      host = Host,
+                                      url = Url},
+               Rest);
 merge_args(Args, [{timeout, Timeout} | Rest]) ->
     merge_args(Args#kinetic_arguments{timeout = Timeout}, Rest).
