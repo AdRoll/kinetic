@@ -1,19 +1,19 @@
 {"1.2.0",
-[{<<"b64fast">>,{pkg,<<"b64fast">>,<<"0.2.2">>},0},
+[{<<"b64fast">>,{pkg,<<"b64fast">>,<<"0.2.3">>},0},
  {<<"erliam">>,
   {git,"https://github.com/AdRoll/erliam.git",
        {ref,"7c2f4d08c7119e70047e80005e54945a286ab10c"}},
   0},
- {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.5">>},0},
+ {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.6">>},0},
  {<<"lhttpc">>,
   {git,"https://github.com/ferd/lhttpc.git",
        {ref,"28d5562be7e53576b624a6f82deac7303ce8f2dd"}},
   0}]}.
 [
 {pkg_hash,[
- {<<"b64fast">>, <<"394A548C7C236AEC3681B55D3E32239EE007229B4C12AE3D262B9597FE623859">>},
- {<<"jiffy">>, <<"A69B58FAF7123534C20E1B0B7AE97AC52079CA02ED4B6989B4B380179CD63A54">>}]},
+ {<<"b64fast">>, <<"07649CF971A0ED088DEFC4F75767A52E08C468CC1D448693F4FB3051092AB987">>},
+ {<<"jiffy">>, <<"8F0AB1D44D72F9A80556EA559907B669574134911FECF836EEB3DB1D238A6899">>}]},
 {pkg_hash_ext,[
- {<<"b64fast">>, <<"3B1C5AF2432DE41E3592AFB4F8F3C474E53BF61AF8C2A8131C031CAF0C9B463A">>},
- {<<"jiffy">>, <<"B617A53F46AE84F20D0C38951367DC947A2CF8CFF922AA5C6AC6B64B8B052289">>}]}
+ {<<"b64fast">>, <<"DE874B5302D607840B787E93785628035FF55334EBCFAFB6413B735983913D23">>},
+ {<<"jiffy">>, <<"6614F7B7EEF8DFE242BF7A74EFE68CEC49989F84C9E40C091F5A58792C65F1C8">>}]}
 ].
