@@ -5,8 +5,6 @@
 -export([start_link/0, start_link/1]).
 -export([init/1, stop/1]).
 
--include("kinetic.hrl").
-
 start_link() ->
     start_link([]).
 

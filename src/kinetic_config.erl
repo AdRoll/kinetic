@@ -25,7 +25,7 @@ g(Name) ->
     end.
 
 get_args() ->
-    try ets:lookup_element(?KINETIC_DATA, ?KINETIC_ARGS_KEY, 2) of
+    try ets:lookup_element(?KINETIC_DATA, args, 2) of
         V ->
             {ok, V}
     catch
@@ -42,7 +42,7 @@ update_data(Opts) ->
                 Result#kinetic_arguments{aws_credentials = erliam:credentials(),
                                          date = awsv4:isonow()}
         end,
-    ets:insert(?KINETIC_DATA, {?KINETIC_ARGS_KEY, Arguments}),
+    ets:insert(?KINETIC_DATA, {args, Arguments}),
     {ok, Arguments}.
 
 % gen_server behavior
@@ -110,7 +110,7 @@ new_args(Opts) ->
         end,
 
     LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
-    DefaultTimeout = proplists:get_value(timeout, Opts, ?DEFAULT_OPERATION_TIMEOUT),
+    DefaultTimeout = proplists:get_value(timeout, Opts, 5000),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
 

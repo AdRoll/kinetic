@@ -1,7 +1,5 @@
 -module(kinetic_utils_tests).
 
--include("kinetic.hrl").
-
 -include_lib("eunit/include/eunit.hrl").
 
 kinetic_utils_test_() ->
