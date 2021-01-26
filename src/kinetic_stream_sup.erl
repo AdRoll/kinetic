@@ -5,8 +5,6 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kinetic.hrl").
-
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [[]]).
 

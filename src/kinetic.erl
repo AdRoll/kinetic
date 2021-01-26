@@ -119,7 +119,7 @@ describe_stream(Payload, Timeout) ->
 %%            {<<"ShardIterator">>, binary()}] <- required
 %%
 %% Response = {ok, [
-%%  {<<"NextShardIterator">>, <<"AAAAAAAAAAHsW8zCWf9164uy8Epue6WS3w6wmj4a4USt+CNvMd6uXQ+HL5vAJMznqqC0DLKsIjuoiTi1BpT6nW0LN2M2D56zM5H8anHm30Gbri9ua+qaGgj+3XTyvbhpERfrezgLHbPB/rIcVpykJbaSj5tmcXYRmFnqZBEyHwtZYFmh6hvWVFkIwLuMZLMrpWhG5r5hzkE=">>},
+%%  {<<"NextShardIterator">>, <<"...a long base64 binary...">>},
 %%  {<<"Records">>, [{<<"Data">>, <<"XzxkYXRhPl8w">>},
 %%                   {<<"PartitionKey">>, <<"partitionKey">>},
 %%                   {<<"SequenceNumber">>: <<"21269319989652663814458848515492872193">>}]}]}
@@ -134,12 +134,13 @@ get_records(Payload, Timeout) ->
 %%
 %% Payload = [{<<"StreamName">>, binary()}, <- required
 %%            {<<"ShardId">>, binary()},    <- required
-%%            {<<"ShardIteratorType">>, <<"AT_SEQUENCE_NUMBER | AFTER_SEQUENCE_NUMBER | TRIM_HORIZON | LATEST">>}, <- required
+%%            {<<"ShardIteratorType">>, <<"AT_SEQUENCE_NUMBER |
+%%                                         AFTER_SEQUENCE_NUMBER |
+%%                                         TRIM_HORIZON |
+%%                                         LATEST">>}, <- required
 %%            {<<"StartingSequenceNumber">>, binary()}] <- optional
 %%
-%% Response = {ok, [
-%%  {<<"ShardIterator">>, <<"AAAAAAAAAAETYyAYzd665+8e0X7JTsASDM/Hr2rSwc0X2qz93iuA3udrjTH+ikQvpQk/1ZcMMLzRdAesqwBGPnsthzU0/CBlM/U8/8oEqGwX3pKw0XyeDNRAAZyXBo3MqkQtCpXhr942BRTjvWKhFz7OmCb2Ncfr8Tl2cBktooi6kJhr+djN5WYkB38Rr3akRgCl9qaU4dY=">>}
-%% ]}
+%% Response = {ok, [{<<"ShardIterator">>, <<"...a long base64 binary...">>}]}
 get_shard_iterator(Payload) ->
     get_shard_iterator(Payload, []).
 

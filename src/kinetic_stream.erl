@@ -16,6 +16,18 @@
 
 -include("kinetic.hrl").
 
+-record(kinetic_stream,
+        {stream_name :: binary(),
+         base_partition_name :: binary(),
+         partitions_number = 1000 :: pos_integer(),
+         timeout = 5000 :: pos_integer(),
+         buffer = <<"">> :: binary(),
+         buffer_size = 0 :: non_neg_integer(),
+         current_partition_num = 0 :: non_neg_integer(),
+         flush_interval = 1000 :: pos_integer(),
+         flush_tref :: undefined | term(),
+         retries = 3 :: pos_integer()}).
+
 start_link(StreamName, Config) ->
     gen_server:start_link(?MODULE, [StreamName, Config], []).
 
