@@ -13,8 +13,10 @@ test_setup() ->
                 put_record,
                 fun(Payload, Pid) ->
                    case Pid of
-                       Pid when is_pid(Pid) -> Pid ! done;
-                       _ -> ok
+                       Pid when is_pid(Pid) ->
+                           Pid ! done;
+                       _ ->
+                           ok
                    end,
                    case proplists:get_value(<<"PartitionKey">>, Payload) of
                        <<"otherstuff">> ->
@@ -24,7 +26,8 @@ test_setup() ->
                             {400,
                              headers,
                              <<"{\"__type\": \"ProvisionedThroughputExceededException\"}">>}};
-                       _ -> {ok, done}
+                       _ ->
+                           {ok, done}
                    end
                 end),
     meck:new(timer, [unstick, passthrough]),

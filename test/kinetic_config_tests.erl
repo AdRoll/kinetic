@@ -15,8 +15,10 @@ test_setup() ->
                 apply_interval,
                 fun(Interval, M, F, [Opts]) ->
                    case proplists:get_value(should_err, Opts) of
-                       true -> {error, broken};
-                       _ -> meck:passthrough([Interval, M, F, [Opts]])
+                       true ->
+                           {error, broken};
+                       _ ->
+                           meck:passthrough([Interval, M, F, [Opts]])
                    end
                 end).
 
