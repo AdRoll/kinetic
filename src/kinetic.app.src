@@ -1,20 +1,10 @@
-{application, kinetic,
- [
-  {description, "Erlang Kinesis Client"},
+{application,
+ kinetic,
+ [{description, "Erlang Kinesis Client"},
   {vsn, "1.3.3"},
   {modules, []},
   {registered, [kinetic_config]},
-  {applications, [
-                  kernel,
-                  stdlib,
-                  inets,
-                  crypto,
-                  ssl,
-                  jiffy,
-                  lhttpc,
-                  erliam
-                 ]},
+  {applications, [kernel, stdlib, inets, crypto, ssl, jiffy, lhttpc, erliam]},
   {env, [{args, []}]},
-  {mod, {kinetic,[]}},
-  {licenses, ["BSD-3-Clause"]}
- ]}.
+  {mod, {kinetic, []}},
+  {licenses, ["BSD-3-Clause"]}]}.
