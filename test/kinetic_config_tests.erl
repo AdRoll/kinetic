@@ -4,6 +4,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-hank([{unnecessary_function_arguments, [{test_teardown, 1, 1}]}]).
+
 test_setup() ->
     meck:new(erliam, [passthrough]),
     meck:expect(erliam, invalidate, 0, ok),
