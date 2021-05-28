@@ -1,4 +1,3 @@
--define(EXPIRATION_REFRESH, 120).
 -define(KINETIC_DATA, kinetic_data).
 -define(KINETIC_STREAM, kinetic_stream).
 -define(KINESIS_MAX_PUT_SIZE, 51200).
