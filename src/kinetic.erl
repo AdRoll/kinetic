@@ -210,7 +210,7 @@ put_record(Payload, Timeout) ->
 %%                                         {<<"ShardId">>, binary()}
 %%                                     ]}]}]}
 %%
-%% Returns {error, Reason} | {ok, list(ok | {error, Reason})}.
+%% Returns {error, Reason} | {ok, [ok | {error, Reason}]}.
 %% In the latter case, the list contains a result for each input record, in order.
 put_records(Payload) ->
     put_records(Payload, []).

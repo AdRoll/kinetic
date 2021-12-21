@@ -9,7 +9,7 @@ start_link() ->
     start_link([]).
 
 % Need the slightly stupid double code here to avoid an infinite loop
-% in case kinetic_config:g(args) -> []
+% in case args is actually [] in the configuration.
 start_link([]) ->
     Args = kinetic_config:g(args),
     supervisor:start_link({local, ?MODULE}, ?MODULE, Args);

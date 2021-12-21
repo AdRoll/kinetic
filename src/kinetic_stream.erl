@@ -7,7 +7,7 @@
 -export([stop/2, start_link/2, put_record/3]).
 -export([flush/2]).
 
-% I dislike this soooo much
+% I dislike this so much
 -ifdef(TEST).
 
 -export([get_stream/2, send_to_kinesis/5]).
@@ -114,7 +114,7 @@ handle_info(flush, State) ->
 handle_info({'EXIT', _From, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', From, Reason}, State) ->
-    error_logger:info_msg("kinetic_stream: ~p exited due to: ~p~n", [From, Reason]),
+    error_logger:info_msg("kinetic stream ~p exited due to: ~p~n", [From, Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
