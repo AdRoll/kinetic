@@ -78,7 +78,7 @@ code_change(_OldVsn, State, _Extra) ->
 handle_info({'EXIT', _From, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', From, Reason}, State) ->
-    error_logger:info_msg("kinetic config: ~p exited due to: ~p~n", [From, Reason]),
+    error_logger:info_msg("~p exited due to: ~p~n", [From, Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
