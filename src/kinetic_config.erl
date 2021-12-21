@@ -78,14 +78,13 @@ code_change(_OldVsn, State, _Extra) ->
 handle_info({'EXIT', _From, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', From, Reason}, State) ->
-    error_logger:info_msg("kinetic_config: ~p exited due to: ~p~n", [From, Reason]),
+    error_logger:info_msg("~p: ~p exited due to: ~p~n", [?MODULE, From, Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
 % Internal implementation
 
-% -spec region(zone()) -> region().
 region("us-east-1" ++ _R) ->
     "us-east-1";
 region("us-west-1" ++ _R) ->
@@ -138,7 +137,7 @@ new_args(Opts) ->
                        timeout = DefaultTimeout,
                        aws_credentials = erliam:credentials()}.
 
-%% todo:
+%% @todo:
 %% - rewrite new_args to use this
 %% - handle additional args
 merge_args(Args, []) ->
