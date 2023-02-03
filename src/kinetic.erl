@@ -1,5 +1,8 @@
 -module(kinetic).
 
+%% @todo Remove once https://github.com/erlang/otp/issues/6779 is fixed
+-dialyzer([{no_missing_return, [start/2]}]).
+
 -behaviour(application).
 
 -export([start/0, stop/0]).
