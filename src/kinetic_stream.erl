@@ -83,13 +83,13 @@ init([StreamName,
 % buffer + Data is not bigger than ?KINESIS_MAX_PUT_SIZE
 handle_call({put_record, Data, DataSize},
             _From,
-            State = #kinetic_stream{buffer_size = BSize})
+            #kinetic_stream{buffer_size = BSize} = State)
     when BSize + DataSize > ?KINESIS_MAX_PUT_SIZE ->
     NewState = internal_flush(State),
     {reply, ok, reset_timer(NewState#kinetic_stream{buffer_size = DataSize, buffer = Data})};
 handle_call({put_record, Data, DataSize},
             _From,
-            State = #kinetic_stream{buffer = Buffer, buffer_size = BSize}) ->
+            #kinetic_stream{buffer = Buffer, buffer_size = BSize} = State) ->
     {reply,
      ok,
      reset_timer(State#kinetic_stream{buffer = <<Buffer/binary, Data/binary>>,
@@ -100,9 +100,9 @@ handle_call(stop, _From, State) ->
 handle_cast(_Arg, State) ->
     {noreply, State}.
 
-terminate(_Reason, #kinetic_stream{stream_name = StreamName, flush_tref = Tref}) ->
+terminate(_Reason, #kinetic_stream{stream_name = StreamName, flush_tref = TRef}) ->
     ets:delete(?MODULE, StreamName),
-    timer:cancel(Tref),
+    timer:cancel(TRef),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -139,24 +139,24 @@ get_stream(StreamName, Config) ->
             end
     end.
 
-internal_flush(State = #kinetic_stream{buffer = <<"">>}) ->
+internal_flush(#kinetic_stream{buffer = <<"">>} = State) ->
     State;
-internal_flush(State =
-                   #kinetic_stream{stream_name = StreamName,
-                                   buffer = Buffer,
-                                   timeout = Timeout,
-                                   retries = Retries}) ->
+internal_flush(#kinetic_stream{stream_name = StreamName,
+                               buffer = Buffer,
+                               timeout = Timeout,
+                               retries = Retries} =
+                   State) ->
     PartitionKey = partition_key(State),
     spawn_link(fun() ->
                   send_to_kinesis(StreamName, Buffer, PartitionKey, Timeout, Retries + 1)
                end),
     increment_partition_num(State#kinetic_stream{buffer = <<"">>, buffer_size = 0}).
 
-increment_partition_num(State =
-                            #kinetic_stream{current_partition_num = Number,
-                                            partitions_number = Number}) ->
+increment_partition_num(#kinetic_stream{current_partition_num = Number,
+                                        partitions_number = Number} =
+                            State) ->
     State#kinetic_stream{current_partition_num = 0};
-increment_partition_num(State = #kinetic_stream{current_partition_num = Number}) ->
+increment_partition_num(#kinetic_stream{current_partition_num = Number} = State) ->
     State#kinetic_stream{current_partition_num = Number + 1}.
 
 partition_key(#kinetic_stream{current_partition_num = Number,
@@ -164,7 +164,7 @@ partition_key(#kinetic_stream{current_partition_num = Number,
     BinNumber = integer_to_binary(Number),
     <<BasePartitionName/binary, "-", BinNumber/binary>>.
 
-reset_timer(State = #kinetic_stream{flush_interval = FlushInterval, flush_tref = TRef}) ->
+reset_timer(#kinetic_stream{flush_interval = FlushInterval, flush_tref = TRef} = State) ->
     timer:cancel(TRef),
     {ok, NewTRef} = timer:send_after(FlushInterval, self(), flush),
     State#kinetic_stream{flush_tref = NewTRef}.
