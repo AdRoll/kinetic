@@ -66,7 +66,7 @@ handle_call(stop, _From, State) ->
 handle_cast(_Arg, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State = #kinetic_config{tref = TRef}) ->
+terminate(_Reason, #kinetic_config{tref = TRef}) ->
     {ok, cancel} = timer:cancel(TRef),
     true = ets:delete(?KINETIC_DATA),
     true = ets:delete(?KINETIC_STREAM),
