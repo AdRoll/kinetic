@@ -254,7 +254,7 @@ execute(Operation, Payload, Opts) ->
                                date = Date,
                                url = Url,
                                host = Host,
-                               lhttpc_opts = LHttpcOpts,
+                               lhttpc_opts = BaseLHttpcOpts,
                                timeout = Timeout} =
                 kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
@@ -276,7 +276,12 @@ execute(Operation, Payload, Opts) ->
                                         signed_headers => SignedHeaders,
                                         aws_date => Date},
                                       iolist_to_binary(Body)),
-
+                    LHttpcOpts =
+                        [{connect_options,
+                          [{fail_if_no_peer_cert, true},
+                           {verify, verify_peer},
+                           {cacerts, public_key:cacerts_get()}]}
+                         | BaseLHttpcOpts],
                     case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
                         {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
                             {ok, kinetic_utils:decode(ResponseBody)};

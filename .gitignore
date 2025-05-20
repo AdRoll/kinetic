@@ -5,3 +5,5 @@ _build/
 *.plt
 erl_crash.dump
 ebin
+.idea/
+*.iml
