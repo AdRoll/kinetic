@@ -36,6 +36,7 @@ start() ->
 
 -spec stop() -> ok | {error, any()}.
 stop() ->
+    lhttpc:delete_pool(kinetic),
     application:stop(kinetic).
 
 start(Opts) when is_list(Opts) ->
