@@ -12,7 +12,7 @@ start_link() ->
 % in case args is actually [] in the configuration.
 start_link([]) ->
     Args = kinetic_config:g(args),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, Args);
+    start_link(Args);
 start_link(Args) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, Args).
 

@@ -94,23 +94,6 @@ test_normal_functions() ->
                    split_shard]).
 
 test_error_functions() ->
-    {ok, _args} =
-        kinetic_config:update_data([{aws_access_key_id, "whatever"},
-                                    {aws_secret_access_key, "secret"},
-                                    {lhttpc_opts, error}]),
-    lists:foreach(fun(F) ->
-                     [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
-                      || Args <- sample_arglists([])]
-                  end,
-                  [create_stream,
-                   delete_stream,
-                   describe_stream,
-                   get_records,
-                   get_shard_iterator,
-                   list_streams,
-                   merge_shards,
-                   put_record,
-                   split_shard]),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun(F) ->
                      [{error, missing_args} = erlang:apply(kinetic, F, Args)

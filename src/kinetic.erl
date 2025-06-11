@@ -25,7 +25,14 @@
 
 -spec start() -> ok | {error, any()}.
 start() ->
-    application:start(kinetic).
+    MaxConections = application:get_env(kinetic, max_connections, 50),
+    DefaultTimeout = application:get_env(kinetic, timeout, 5000),
+    case lhttpc:add_pool(kinetic, MaxConections, DefaultTimeout) of
+        {error, Error} ->
+            {error, Error};
+        {ok, _PoolPid} ->
+            application:start(kinetic)
+    end.
 
 -spec stop() -> ok | {error, any()}.
 stop() ->
@@ -277,7 +284,13 @@ execute(Operation, Payload, Opts) ->
                                         aws_date => Date},
                                       iolist_to_binary(Body)),
 
-                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
+                    case lhttpc:request(Url,
+                                        post,
+                                        Headers,
+                                        Body,
+                                        Timeout,
+                                        [{pool, kinetic} | LHttpcOpts])
+                    of
                         {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
                         {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
