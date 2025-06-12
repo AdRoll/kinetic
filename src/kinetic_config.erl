@@ -108,7 +108,7 @@ new_args(Opts) ->
                 R
         end,
 
-    LHttpcOpts = proplists:get_value(lhttpc_opts, Opts, []),
+    HackneyOpts = proplists:get_value(hackney_opts, Opts, []),
     DefaultTimeout = proplists:get_value(timeout, Opts, 5000),
     Host = kinetic_utils:endpoint("kinesis", Region),
     Url = "https://" ++ Host,
@@ -133,7 +133,7 @@ new_args(Opts) ->
                        date = awsv4:isonow(),
                        host = Host,
                        url = Url,
-                       lhttpc_opts = LHttpcOpts,
+                       hackney_opts = HackneyOpts,
                        timeout = DefaultTimeout,
                        aws_credentials = erliam:credentials()}.
 

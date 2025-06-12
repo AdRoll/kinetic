@@ -24,13 +24,13 @@ test_arg_setup(Opts) ->
 
     {ok, _args} = kinetic_config:update_data(Opts),
 
-    meck:new(lhttpc),
-    meck:expect(lhttpc,
-                request,
-                fun (_Url, post, _Headers, _Body, _Timeout, error) ->
-                        {ok, {{400, bla}, headers, body}};
-                    (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
-                        {ok, {{200, bla}, headers, <<"{\"hello\": \"world\"}">>}}
+    meck:new(hackney),
+    meck:expect(hackney,
+                post,
+                fun (_Url, _Headers, _Body, [_, _, _, error]) ->
+                        {ok, 400, headers, body};
+                    (_Url, _Headers, _Body, _Opts) ->
+                        {ok, 200, headers, <<"{\"hello\": \"world\"}">>}
                 end).
 
 test_setup() ->
@@ -41,13 +41,13 @@ test_error_setup() ->
     Opts =
         [{aws_access_key_id, "whatever"},
          {aws_secret_access_key, "secret"},
-         {lhttpc_opts, error}],
+         {hackney_opts, [error]}],
     test_arg_setup(Opts).
 
 test_teardown(_) ->
     ets:delete(?KINETIC_DATA),
     meck:unload(imds),
-    meck:unload(lhttpc),
+    meck:unload(hackney),
     meck:unload(erliam),
     application:stop(ssl).
 
@@ -97,7 +97,7 @@ test_error_functions() ->
     {ok, _args} =
         kinetic_config:update_data([{aws_access_key_id, "whatever"},
                                     {aws_secret_access_key, "secret"},
-                                    {lhttpc_opts, error}]),
+                                    {hackney_opts, [error]}]),
     lists:foreach(fun(F) ->
                      [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
                       || Args <- sample_arglists([])]
@@ -130,18 +130,18 @@ put_records_test_() ->
     {setup, fun test_setup/0, fun test_teardown/1, fun test_put_records/0}.
 
 test_put_records() ->
-    meck:expect(lhttpc,
-                request,
-                fun (_Url, post, _Headers, _Body, _Timeout, error) ->
-                        {ok, {{400, bla}, headers, body}};
-                    (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
+    meck:expect(hackney,
+                post,
+                fun (_Url, _Headers, _Body, [_, _, _, error]) ->
+                        {ok, 400, headers, body};
+                    (_Url, _Headers, _Body, _Opts) ->
                         {ok,
-                         {{200, bla},
-                          headers,
-                          <<"{\"FailedRecordCount\": 1,\n                    \"Records\":\n "
-                            "                       [{\"SequenceNumber\": \"10\", \"ShardId\": "
-                            "\"5\" },\n                         {\"ErrorCode\": \"404\", "
-                            "\"ErrorMessage\": \"Not found\"}]}">>}}
+                         200,
+                         headers,
+                         <<"{\"FailedRecordCount\": 1,\n                    \"Records\":\n "
+                           "                       [{\"SequenceNumber\": \"10\", \"ShardId\": "
+                           "\"5\" },\n                         {\"ErrorCode\": \"404\", "
+                           "\"ErrorMessage\": \"Not found\"}]}">>}
                 end),
 
     {ok, [Result1, Result2]} = erlang:apply(kinetic, put_records, [[]]),

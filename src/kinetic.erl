@@ -21,6 +21,8 @@
 
 -include("kinetic.hrl").
 
+-define(HACKNEY_POOL, kinetic_pool).
+
 % application behaviour
 
 -spec start() -> ok | {error, any()}.
@@ -32,14 +34,17 @@ stop() ->
     application:stop(kinetic).
 
 start(Opts) when is_list(Opts) ->
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) -> {ok, pid()}.
 start(_, Opts) ->
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec stop(any()) -> ok.
 stop(_) ->
+    hackney_pool:stop_pool(?HACKNEY_POOL),
     ok.
 
 % Public API
@@ -254,7 +259,7 @@ execute(Operation, Payload, Opts) ->
                                date = Date,
                                url = Url,
                                host = Host,
-                               lhttpc_opts = LHttpcOpts,
+                               hackney_opts = HackneyOpts,
                                timeout = Timeout} =
                 kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
@@ -276,14 +281,18 @@ execute(Operation, Payload, Opts) ->
                                         signed_headers => SignedHeaders,
                                         aws_date => Date},
                                       iolist_to_binary(Body)),
-
-                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
-                        {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                    case hackney:post(Url,
+                                      Headers,
+                                      Body,
+                                      [{pool, ?HACKNEY_POOL}, with_body, {recv_timeout, Timeout}
+                                       | HackneyOpts])
+                    of
+                        {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
-                        {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, {Code, ResponseHeaders, ResponseBody}};
-                        {error, E} ->
-                            {error, E}
+                        {ok, Code, RespHeaders, ResponseBody} ->
+                            {error, {Code, RespHeaders, ResponseBody}};
+                        {error, Error} ->
+                            {error, Error}
                     end
             end
     end.
@@ -299,3 +308,7 @@ record_status(Record) ->
 get_value(Key, TupleList) ->
     {Key, Value} = lists:keyfind(Key, 1, TupleList),
     Value.
+
+start_pool() ->
+    MaxConnections = application:get_env(?MODULE, max_connections, 100),
+    hackney_pool:start_pool(?HACKNEY_POOL, [{max_connections, MaxConnections}]).

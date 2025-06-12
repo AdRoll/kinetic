@@ -28,7 +28,7 @@ test_supervisor() ->
     {ok,
      #kinetic_arguments{aws_credentials = fake_creds,
                         region = "us-east-1",
-                        lhttpc_opts = []}} =
+                        hackney_opts = []}} =
         kinetic_config:get_args(),
 
     kinetic_sup:stop(Pid),

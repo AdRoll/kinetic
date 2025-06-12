@@ -72,14 +72,14 @@ test_passed_metadata() ->
     {ok,
      #kinetic_arguments{aws_credentials = fake_creds,
                         region = "us-east-1",
-                        lhttpc_opts = []}} =
+                        hackney_opts = []}} =
         kinetic_config:get_args(),
     kinetic_config:update_data([{aws_access_key_id, "whatever"},
                                 {aws_secret_access_key, "secret"}]),
     {ok,
      #kinetic_arguments{aws_credentials = fake_creds,
                         region = "us-east-1",
-                        lhttpc_opts = []}} =
+                        hackney_opts = []}} =
         kinetic_config:get_args(),
     kinetic_config:stop(),
     {error, _} = kinetic_config:get_args(),
