@@ -4,7 +4,7 @@
   {vsn, git},
   {modules, []},
   {registered, [kinetic_config]},
-  {applications, [kernel, stdlib, inets, crypto, ssl, jiffy, hackney, erliam]},
+  {applications, [kernel, stdlib, inets, crypto, ssl, jiffy, ehttpc, erliam]},
   {env, [{args, []}]},
   {mod, {kinetic, []}},
   {licenses, ["BSD-3-Clause"]}]}.

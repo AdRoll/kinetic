@@ -69,17 +69,11 @@ test_passed_metadata() ->
         kinetic_config:start_link([{aws_access_key_id, "whatever"},
                                    {aws_secret_access_key, "secret"}]),
     ?assert(ets:info(?KINETIC_STREAM) =/= undefined),
-    {ok,
-     #kinetic_arguments{aws_credentials = fake_creds,
-                        region = "us-east-1",
-                        hackney_opts = []}} =
+    {ok, #kinetic_arguments{aws_credentials = fake_creds, region = "us-east-1"}} =
         kinetic_config:get_args(),
     kinetic_config:update_data([{aws_access_key_id, "whatever"},
                                 {aws_secret_access_key, "secret"}]),
-    {ok,
-     #kinetic_arguments{aws_credentials = fake_creds,
-                        region = "us-east-1",
-                        hackney_opts = []}} =
+    {ok, #kinetic_arguments{aws_credentials = fake_creds, region = "us-east-1"}} =
         kinetic_config:get_args(),
     kinetic_config:stop(),
     {error, _} = kinetic_config:get_args(),

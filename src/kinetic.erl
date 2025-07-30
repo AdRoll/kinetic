@@ -21,7 +21,7 @@
 
 -include("kinetic.hrl").
 
--define(HACKNEY_POOL, kinetic_pool).
+-define(EHTTPC_POOL, kinetic_pool).
 
 % application behaviour
 
@@ -44,7 +44,7 @@ start(_, Opts) ->
 
 -spec stop(any()) -> ok.
 stop(_) ->
-    hackney_pool:stop_pool(?HACKNEY_POOL),
+    ehttpc_sup:stop_pool(?EHTTPC_POOL),
     ok.
 
 % Public API
@@ -259,7 +259,6 @@ execute(Operation, Payload, Opts) ->
                                date = Date,
                                url = Url,
                                host = Host,
-                               hackney_opts = HackneyOpts,
                                timeout = Timeout} =
                 kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
@@ -283,12 +282,8 @@ execute(Operation, Payload, Opts) ->
                                                    signed_headers => SignedHeaders,
                                                    aws_date => Date},
                                                  iolist_to_binary(Body))],
-                    case hackney:post(Url,
-                                      Headers,
-                                      Body,
-                                      [{pool, ?HACKNEY_POOL}, with_body, {recv_timeout, Timeout}
-                                       | HackneyOpts])
-                    of
+                    Worker = ehttpc_pool:pick_worker(?EHTTPC_POOL),
+                    case ehttpc:request(Worker, post, {Url, Headers, Body}, Timeout) of
                         {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
                         {ok, Code, RespHeaders, ResponseBody} ->
@@ -312,5 +307,5 @@ get_value(Key, TupleList) ->
     Value.
 
 start_pool() ->
-    MaxConnections = application:get_env(?MODULE, max_connections, 100),
-    hackney_pool:start_pool(?HACKNEY_POOL, [{max_connections, MaxConnections}]).
+    PoolSize = application:get_env(?MODULE, pool_size, 100),
+    ehttpc_sup:start_pool(?EHTTPC_POOL, [{pool_size, PoolSize}]).

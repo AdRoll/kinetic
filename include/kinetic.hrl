@@ -7,6 +7,5 @@
          date :: undefined | string(),
          host :: undefined | string(),
          url :: undefined | string(),
-         hackney_opts = [] :: [any()],
          timeout :: undefined | pos_integer(),
          aws_credentials}).
