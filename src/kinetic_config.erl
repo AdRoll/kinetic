@@ -85,31 +85,18 @@ handle_info(_Info, State) ->
 
 % Internal implementation
 
-region("us-east-1" ++ _R) ->
-    "us-east-1";
-region("us-west-1" ++ _R) ->
-    "us-west-1";
-region("us-west-2" ++ _R) ->
-    "us-west-2";
-region("ap-northeast-1" ++ _R) ->
-    "ap-northeast-1";
-region("ap-southeast-1" ++ _R) ->
-    "ap-southeast-1";
-region("eu-west-1" ++ _R) ->
-    "eu-west-1".
-
 new_args(Opts) ->
     Region =
         case proplists:get_value(region, Opts, undefined) of
             undefined ->
                 {ok, Zone} = imds:zone(),
-                region(Zone);
+                kinetic_utils:region(Zone);
             R ->
                 R
         end,
 
     DefaultTimeout = proplists:get_value(timeout, Opts, 5000),
-    Host = kinetic_utils:endpoint("kinesis", Region),
+    Host = kinetic_utils:endpoint(Region),
     Url = "https://" ++ Host,
 
     %% erliam should support named profiles for using specific roles or preconfigured
@@ -141,7 +128,7 @@ new_args(Opts) ->
 merge_args(Args, []) ->
     Args;
 merge_args(Args, [{region, Region} | Rest]) ->
-    Host = kinetic_utils:endpoint("kinesis", Region),
+    Host = kinetic_utils:endpoint(Region),
     Url = "https://" ++ Host,
     merge_args(Args#kinetic_arguments{region = Region,
                                       host = Host,

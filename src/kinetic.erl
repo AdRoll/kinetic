@@ -34,12 +34,12 @@ stop() ->
     application:stop(kinetic).
 
 start(Opts) when is_list(Opts) ->
-    start_pool(),
+    start_pool(Opts),
     kinetic_sup:start_link(Opts).
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) -> {ok, pid()}.
 start(_, Opts) ->
-    start_pool(),
+    start_pool(Opts),
     kinetic_sup:start_link(Opts).
 
 -spec stop(any()) -> ok.
@@ -257,7 +257,6 @@ execute(Operation, Payload, Opts) ->
             #kinetic_arguments{aws_credentials = AwsCreds,
                                region = Region,
                                date = Date,
-                               url = Url,
                                host = Host,
                                timeout = Timeout} =
                 kinetic_config:merge_args(Args, Opts),
@@ -283,7 +282,7 @@ execute(Operation, Payload, Opts) ->
                                                    aws_date => Date},
                                                  iolist_to_binary(Body))],
                     Worker = ehttpc_pool:pick_worker(?EHTTPC_POOL),
-                    case ehttpc:request(Worker, post, {Url, Headers, Body}, Timeout) of
+                    case ehttpc:request(Worker, post, {"", Headers, Body}, Timeout) of
                         {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
                         {ok, Code, RespHeaders, ResponseBody} ->
@@ -306,6 +305,16 @@ get_value(Key, TupleList) ->
     {Key, Value} = lists:keyfind(Key, 1, TupleList),
     Value.
 
-start_pool() ->
+start_pool(Opts) ->
+    Region =
+        case proplists:get_value(region, Opts, undefined) of
+            undefined ->
+                {ok, Zone} = imds:zone(),
+                kinetic_utils:region(Zone);
+            R ->
+                R
+        end,
+    Endpoint = kinetic_utils:endpoint(Region),
     PoolSize = application:get_env(?MODULE, pool_size, 100),
-    ehttpc_sup:start_pool(?EHTTPC_POOL, [{pool_size, PoolSize}]).
+    ehttpc_sup:start_pool(?EHTTPC_POOL,
+                          [{host, Endpoint}, {port, 443}, {pool_size, PoolSize}]).
