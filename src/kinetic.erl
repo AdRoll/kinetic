@@ -282,7 +282,7 @@ execute(Operation, Payload, Opts) ->
                                                    aws_date => Date},
                                                  iolist_to_binary(Body))],
                     Worker = ehttpc_pool:pick_worker(?EHTTPC_POOL),
-                    case ehttpc:request(Worker, post, {"", Headers, Body}, Timeout) of
+                    case ehttpc:request(Worker, post, {"/", Headers, Body}, Timeout) of
                         {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
                         {ok, Code, RespHeaders, ResponseBody} ->
