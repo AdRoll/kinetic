@@ -317,4 +317,7 @@ start_pool(Opts) ->
     Endpoint = kinetic_utils:endpoint(Region),
     PoolSize = application:get_env(?MODULE, pool_size, 100),
     ehttpc_sup:start_pool(?EHTTPC_POOL,
-                          [{host, Endpoint}, {port, 443}, {pool_size, PoolSize}]).
+                          [{host, Endpoint},
+                           {port, 443},
+                           {pool_size, PoolSize},
+                           {gun_opts, [{transport, tls}]}]).
