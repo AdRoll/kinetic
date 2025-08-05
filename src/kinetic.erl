@@ -21,8 +21,6 @@
 
 -include("kinetic.hrl").
 
--define(EHTTPC_POOL, kinetic_pool).
-
 % application behaviour
 
 -spec start() -> ok | {error, any()}.
@@ -34,17 +32,21 @@ stop() ->
     application:stop(kinetic).
 
 start(Opts) when is_list(Opts) ->
-    start_pool(Opts),
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) -> {ok, pid()}.
 start(_, Opts) ->
-    start_pool(Opts),
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec stop(any()) -> ok.
 stop(_) ->
-    ehttpc_sup:stop_pool(?EHTTPC_POOL),
+    lists:foreach(fun(Region) ->
+                     PoolName = kinetic_utils:pool_name(Region),
+                     ok = ehttpc_sup:stop_pool(PoolName)
+                  end,
+                  kinetic_utils:regions()),
     ok.
 
 % Public API
@@ -281,7 +283,8 @@ execute(Operation, Payload, Opts) ->
                                                    signed_headers => SignedHeaders,
                                                    aws_date => Date},
                                                  iolist_to_binary(Body))],
-                    Worker = ehttpc_pool:pick_worker(?EHTTPC_POOL),
+                    PoolName = kinetic_utils:pool_name(Region),
+                    Worker = ehttpc_pool:pick_worker(PoolName),
                     case ehttpc:request(Worker, post, {"/", Headers, Body}, Timeout) of
                         {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
@@ -305,19 +308,15 @@ get_value(Key, TupleList) ->
     {Key, Value} = lists:keyfind(Key, 1, TupleList),
     Value.
 
-start_pool(Opts) ->
-    Region =
-        case proplists:get_value(region, Opts, undefined) of
-            undefined ->
-                {ok, Zone} = imds:zone(),
-                kinetic_utils:region(Zone);
-            R ->
-                R
-        end,
-    Endpoint = kinetic_utils:endpoint(Region),
+start_pool() ->
     PoolSize = application:get_env(?MODULE, pool_size, 100),
-    ehttpc_sup:start_pool(?EHTTPC_POOL,
-                          [{host, Endpoint},
-                           {port, 443},
-                           {pool_size, PoolSize},
-                           {gun_opts, [{transport, tls}]}]).
+    lists:foreach(fun(Region) ->
+                     PoolName = kinetic_utils:pool_name(Region),
+                     Endpoint = kinetic_utils:endpoint(Region),
+                     ehttpc_sup:start_pool(PoolName,
+                                           [{host, Endpoint},
+                                            {port, 443},
+                                            {pool_size, PoolSize},
+                                            {gun_opts, [{transport, tls}]}])
+                  end,
+                  kinetic_utils:regions()).
