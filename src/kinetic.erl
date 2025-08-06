@@ -310,6 +310,7 @@ get_value(Key, TupleList) ->
 
 start_pool() ->
     PoolSize = application:get_env(?MODULE, pool_size, 100),
+    GunOpts = application:get_env(?MODULE, gun_opts, []),
     lists:foreach(fun(Region) ->
                      PoolName = kinetic_utils:pool_name(Region),
                      Endpoint = kinetic_utils:endpoint(Region),
@@ -317,6 +318,7 @@ start_pool() ->
                                            [{host, Endpoint},
                                             {port, 443},
                                             {pool_size, PoolSize},
-                                            {enable_pipelining, true}])
+                                            {enable_pipelining, true},
+                                            {gun_opts, GunOpts}])
                   end,
                   kinetic_utils:regions()).
