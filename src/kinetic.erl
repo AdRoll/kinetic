@@ -314,6 +314,9 @@ start_pool() ->
                      PoolName = kinetic_utils:pool_name(Region),
                      Endpoint = kinetic_utils:endpoint(Region),
                      ehttpc_sup:start_pool(PoolName,
-                                           [{host, Endpoint}, {port, 443}, {pool_size, PoolSize}])
+                                           [{host, Endpoint},
+                                            {port, 443},
+                                            {pool_size, PoolSize},
+                                            {enable_pipelining, true}])
                   end,
                   kinetic_utils:regions()).
