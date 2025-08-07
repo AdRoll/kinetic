@@ -318,7 +318,6 @@ start_pool() ->
                                            [{host, Endpoint},
                                             {port, 443},
                                             {pool_size, PoolSize},
-                                            {enable_pipelining, true},
                                             {max_inactive, 200},
                                             {gun_opts, GunOpts}])
                   end,
