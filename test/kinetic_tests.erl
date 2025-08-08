@@ -24,13 +24,12 @@ test_arg_setup(Opts) ->
 
     {ok, _args} = kinetic_config:update_data(Opts),
 
-    meck:new(lhttpc),
-    meck:expect(lhttpc,
+    meck:new(ehttpc),
+    meck:expect(ehttpc_pool, pick_worker, fun(_PoolName) -> worker end),
+    meck:expect(ehttpc,
                 request,
-                fun (_Url, post, _Headers, _Body, _Timeout, error) ->
-                        {ok, {{400, bla}, headers, body}};
-                    (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
-                        {ok, {{200, bla}, headers, <<"{\"hello\": \"world\"}">>}}
+                fun(_Worker, post, {_Url, _Headers, _Body}, _Timeout) ->
+                   {ok, 200, headers, <<"{\"hello\": \"world\"}">>}
                 end).
 
 test_setup() ->
@@ -38,16 +37,13 @@ test_setup() ->
     test_arg_setup(Opts).
 
 test_error_setup() ->
-    Opts =
-        [{aws_access_key_id, "whatever"},
-         {aws_secret_access_key, "secret"},
-         {lhttpc_opts, error}],
+    Opts = [{aws_access_key_id, "whatever"}, {aws_secret_access_key, "secret"}],
     test_arg_setup(Opts).
 
 test_teardown(_) ->
     ets:delete(?KINETIC_DATA),
     meck:unload(imds),
-    meck:unload(lhttpc),
+    meck:unload(ehttpc),
     meck:unload(erliam),
     application:stop(ssl).
 
@@ -94,23 +90,6 @@ test_normal_functions() ->
                    split_shard]).
 
 test_error_functions() ->
-    {ok, _args} =
-        kinetic_config:update_data([{aws_access_key_id, "whatever"},
-                                    {aws_secret_access_key, "secret"},
-                                    {lhttpc_opts, error}]),
-    lists:foreach(fun(F) ->
-                     [{error, {400, headers, body}} = erlang:apply(kinetic, F, Args)
-                      || Args <- sample_arglists([])]
-                  end,
-                  [create_stream,
-                   delete_stream,
-                   describe_stream,
-                   get_records,
-                   get_shard_iterator,
-                   list_streams,
-                   merge_shards,
-                   put_record,
-                   split_shard]),
     ets:delete_all_objects(?KINETIC_DATA),
     lists:foreach(fun(F) ->
                      [{error, missing_args} = erlang:apply(kinetic, F, Args)
@@ -130,18 +109,17 @@ put_records_test_() ->
     {setup, fun test_setup/0, fun test_teardown/1, fun test_put_records/0}.
 
 test_put_records() ->
-    meck:expect(lhttpc,
+    meck:expect(ehttpc_pool, pick_worker, fun(_PoolName) -> worker end),
+    meck:expect(ehttpc,
                 request,
-                fun (_Url, post, _Headers, _Body, _Timeout, error) ->
-                        {ok, {{400, bla}, headers, body}};
-                    (_Url, post, _Headers, _Body, _Timeout, _Opts) ->
-                        {ok,
-                         {{200, bla},
-                          headers,
-                          <<"{\"FailedRecordCount\": 1,\n                    \"Records\":\n "
-                            "                       [{\"SequenceNumber\": \"10\", \"ShardId\": "
-                            "\"5\" },\n                         {\"ErrorCode\": \"404\", "
-                            "\"ErrorMessage\": \"Not found\"}]}">>}}
+                fun(_Worker, post, {_Url, _Headers, _Body}, _Timeout) ->
+                   {ok,
+                    200,
+                    headers,
+                    <<"{\"FailedRecordCount\": 1,\n                    \"Records\":\n "
+                      "                       [{\"SequenceNumber\": \"10\", \"ShardId\": "
+                      "\"5\" },\n                         {\"ErrorCode\": \"404\", "
+                      "\"ErrorMessage\": \"Not found\"}]}">>}
                 end),
 
     {ok, [Result1, Result2]} = erlang:apply(kinetic, put_records, [[]]),

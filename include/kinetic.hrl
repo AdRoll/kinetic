@@ -7,6 +7,5 @@
          date :: undefined | string(),
          host :: undefined | string(),
          url :: undefined | string(),
-         lhttpc_opts = [] :: [any()],
          timeout :: undefined | pos_integer(),
          aws_credentials}).

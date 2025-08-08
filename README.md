@@ -11,7 +11,7 @@ to override the context values with configured ones.
 
 You can start an erl with:
 
-    $ erl -pa ebin -pa deps/*/ebin -s inets -s crypto -s ssl -s lhttpc -config development -s kinetic
+    $ erl -pa ebin -pa deps/*/ebin -s inets -s crypto -s ssl -s ehttpc -config development -s kinetic
     Erlang R16B03-1 (erts-5.10.4) [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false] [dtrace]
 
     Eshell V5.10.4  (abort with ^G)

@@ -32,14 +32,21 @@ stop() ->
     application:stop(kinetic).
 
 start(Opts) when is_list(Opts) ->
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec start(normal | {takeover, node()} | {failover, node()}, any()) -> {ok, pid()}.
 start(_, Opts) ->
+    start_pool(),
     kinetic_sup:start_link(Opts).
 
 -spec stop(any()) -> ok.
 stop(_) ->
+    lists:foreach(fun(Region) ->
+                     PoolName = kinetic_utils:pool_name(Region),
+                     ok = ehttpc_sup:stop_pool(PoolName)
+                  end,
+                  kinetic_utils:regions()),
     ok.
 
 % Public API
@@ -252,9 +259,7 @@ execute(Operation, Payload, Opts) ->
             #kinetic_arguments{aws_credentials = AwsCreds,
                                region = Region,
                                date = Date,
-                               url = Url,
                                host = Host,
-                               lhttpc_opts = LHttpcOpts,
                                timeout = Timeout} =
                 kinetic_config:merge_args(Args, Opts),
             case kinetic_utils:encode({Payload}) of
@@ -267,23 +272,26 @@ execute(Operation, Payload, Opts) ->
                         #{"content-type" => "application/x-amz-json-1.1",
                           "connection" => "keep-alive"},
                     Headers =
-                        awsv4:headers(AwsCreds,
-                                      #{service => "kinesis",
-                                        target_api => Target,
-                                        method => "POST",
-                                        region => Region,
-                                        host => Host,
-                                        signed_headers => SignedHeaders,
-                                        aws_date => Date},
-                                      iolist_to_binary(Body)),
-
-                    case lhttpc:request(Url, post, Headers, Body, Timeout, LHttpcOpts) of
-                        {ok, {{200, _}, _ResponseHeaders, ResponseBody}} ->
+                        [{Key, iolist_to_binary(Value)}
+                         || {Key, Value}
+                                <- awsv4:headers(AwsCreds,
+                                                 #{service => "kinesis",
+                                                   target_api => Target,
+                                                   method => "POST",
+                                                   region => Region,
+                                                   host => Host,
+                                                   signed_headers => SignedHeaders,
+                                                   aws_date => Date},
+                                                 iolist_to_binary(Body))],
+                    PoolName = kinetic_utils:pool_name(Region),
+                    Worker = ehttpc_pool:pick_worker(PoolName),
+                    case ehttpc:request(Worker, post, {"/", Headers, Body}, Timeout) of
+                        {ok, 200, _, ResponseBody} ->
                             {ok, kinetic_utils:decode(ResponseBody)};
-                        {ok, {{Code, _}, ResponseHeaders, ResponseBody}} ->
-                            {error, {Code, ResponseHeaders, ResponseBody}};
-                        {error, E} ->
-                            {error, E}
+                        {ok, Code, RespHeaders, ResponseBody} ->
+                            {error, {Code, RespHeaders, ResponseBody}};
+                        {error, Error} ->
+                            {error, Error}
                     end
             end
     end.
@@ -299,3 +307,17 @@ record_status(Record) ->
 get_value(Key, TupleList) ->
     {Key, Value} = lists:keyfind(Key, 1, TupleList),
     Value.
+
+start_pool() ->
+    PoolSize = application:get_env(?MODULE, pool_size, 100),
+    GunOpts = application:get_env(?MODULE, gun_opts, []),
+    lists:foreach(fun(Region) ->
+                     PoolName = kinetic_utils:pool_name(Region),
+                     Endpoint = kinetic_utils:endpoint(Region),
+                     ehttpc_sup:start_pool(PoolName,
+                                           [{host, Endpoint},
+                                            {port, 443},
+                                            {pool_size, PoolSize},
+                                            {gun_opts, GunOpts}])
+                  end,
+                  kinetic_utils:regions()).
